@@ -36,11 +36,22 @@ async function testDatabase() {
         'SELECT * FROM category_table_data WHERE categoryId = ?',
         [cat.id]
       );
-      console.log(`  ${cat.categoryName}: ${tableData.length} table data entries`);
+      console.log(`\n  ${cat.categoryName}: ${tableData.length} table data entries`);
       tableData.forEach(data => {
         console.log(`    - ${data.division}: ${data.jumlah} total, ${data.progress}% progress`);
+        console.log(`      Progress breakdown: Selesai=${data.selesai}, Berkelanjutan=${data.selesaiBerkelanjutan}, Proses=${data.proses}`);
       });
     }
+    
+    // Test if there are any entries with progress > 0
+    console.log('\n🔍 Checking for entries with progress > 0...');
+    const [progressData] = await connection.execute(
+      'SELECT c.categoryName, ctd.division, ctd.progress FROM categories c JOIN category_table_data ctd ON c.id = ctd.categoryId WHERE ctd.progress > 0'
+    );
+    console.log(`Found ${progressData.length} entries with progress > 0:`);
+    progressData.forEach(data => {
+      console.log(`  - ${data.categoryName} (${data.division}): ${data.progress}%`);
+    });
     
     connection.release();
     console.log('\n✅ All tests passed!');
