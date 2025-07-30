@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Grid3X3, ClipboardList, Building2 } from 'lucide-react';
+import { Home, Grid3X3, ClipboardList, Building2, Database } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
@@ -14,6 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'categories', label: 'Rincian Kategori', icon: Grid3X3 },
     { id: 'tindak-lanjut', label: 'Tindak Lanjut', icon: ClipboardList },
+    { id: 'database-test', label: 'Database Test', icon: Database },
   ];
 
   return (

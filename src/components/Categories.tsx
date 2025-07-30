@@ -21,6 +21,8 @@ const Categories: React.FC = () => {
     addCategoryTable,
     updateCategoryTable,
     deleteCategoryTable,
+    loading,
+    error,
   } = useData();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,16 +94,21 @@ const Categories: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (editingTable) {
-      updateCategoryTable(editingTable.id, formData);
-    } else {
-      addCategoryTable(formData);
-    }
+    try {
+      if (editingTable) {
+        await updateCategoryTable(editingTable.id, formData);
+      } else {
+        await addCategoryTable(formData);
+      }
 
-    handleCloseModal();
+      handleCloseModal();
+    } catch (error) {
+      console.error('Failed to save category:', error);
+      // You might want to show an error message to the user
+    }
   };
 
   const handleEdit = (table: CategoryTable) => {
@@ -114,9 +121,14 @@ const Categories: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    deleteCategoryTable(id);
-    setDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCategoryTable(id);
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      // You might want to show an error message to the user
+    }
   };
 
   const handleCloseModal = () => {
@@ -133,7 +145,7 @@ const Categories: React.FC = () => {
     selectedCategory === "all"
       ? categoryTables
       : categoryTables.filter(
-          (table) => table.categoryName === selectedCategory
+          (table) => table.categoryName && table.categoryName === selectedCategory
         );
 
   return (
@@ -156,8 +168,8 @@ const Categories: React.FC = () => {
             >
               <option value="all">Semua Kategori</option>
               {categoryTables.map((table) => (
-                <option key={table.id} value={table.categoryName}>
-                  {table.categoryName}
+                <option key={table.id} value={table.categoryName || ''}>
+                  {table.categoryName || 'Unnamed Category'}
                 </option>
               ))}
             </select>
@@ -175,7 +187,17 @@ const Categories: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm">
         <div className="overflow-hidden">
-          {categoryTables.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading data...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <div className="text-red-600 mb-4">❌ Error: {error}</div>
+              <p className="text-gray-500">Failed to load categories</p>
+            </div>
+          ) : categoryTables.length === 0 ? (
             <div className="text-center py-8">
               <Grid3X3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">Belum ada kategori yang dibuat</p>

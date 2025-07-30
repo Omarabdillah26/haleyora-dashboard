@@ -4,9 +4,11 @@ location: "us-central1"
 schema:
   source: "./schema"
   datasource:
-    postgresql:
+    mysql:
+      host: "pintu2.minecuta.com"
+      port: 3306
       database: "fdcdb"
-      cloudSql:
-        instanceId: "project-fdc"
+      username: "omarjelek"
+      password: "121212"
       # schemaValidation: "COMPATIBLE"
 connectorDirs: ["./connector"]

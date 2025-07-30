@@ -17,7 +17,7 @@ const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
 
 const TindakLanjut: React.FC = () => {
   const { user } = useAuth();
-  const { categoryTables, updateCategoryTable, deleteCategoryTable } =
+  const { categoryTables, updateCategoryTable, deleteCategoryTable, loading, error } =
     useData();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,7 +73,7 @@ const TindakLanjut: React.FC = () => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  const updateTableRow = (
+  const updateTableRow = async (
     tableId: string,
     rowId: string,
     updates: Partial<CategoryTableData>
@@ -94,44 +94,48 @@ const TindakLanjut: React.FC = () => {
       return row;
     });
 
-    updateCategoryTable(tableId, { tableData: updatedTableData });
+    try {
+      await updateCategoryTable(tableId, { tableData: updatedTableData });
+    } catch (error) {
+      console.error('Failed to update table row:', error);
+    }
   };
 
-  const addTableRow = (tableId: string) => {
+  const addTableRow = async (tableId: string) => {
     const table = categoryTables.find((t) => t.id === tableId);
     if (!table) return;
 
     const newRow: CategoryTableData = {
       id: Date.now().toString(),
-      division: formData.division,
-      jumlah: formData.jumlah,
-      proses: formData.proses,
-      selesai: formData.selesai,
-      belumDitindaklanjuti: formData.belumDitindaklanjuti,
-      selesaiBerkelanjutan: formData.selesaiBerkelanjutan,
-      progress: calculateProgress({
-        id: "",
-        division: formData.division,
-        jumlah: formData.jumlah,
-        proses: formData.proses,
-        selesai: formData.selesai,
-        belumDitindaklanjuti: formData.belumDitindaklanjuti,
-        selesaiBerkelanjutan: formData.selesaiBerkelanjutan,
-        progress: 0,
-      }),
+      division: "BOD-1",
+      jumlah: 0,
+      proses: 0,
+      selesai: 0,
+      belumDitindaklanjuti: 0,
+      selesaiBerkelanjutan: 0,
+      progress: 0,
     };
 
     const updatedTableData = [...table.tableData, newRow];
-    updateCategoryTable(tableId, { tableData: updatedTableData });
-    handleCloseModal();
+
+    try {
+      await updateCategoryTable(tableId, { tableData: updatedTableData });
+    } catch (error) {
+      console.error('Failed to add table row:', error);
+    }
   };
 
-  const removeTableRow = (tableId: string, rowId: string) => {
+  const removeTableRow = async (tableId: string, rowId: string) => {
     const table = categoryTables.find((t) => t.id === tableId);
     if (!table) return;
 
     const updatedTableData = table.tableData.filter((row) => row.id !== rowId);
-    updateCategoryTable(tableId, { tableData: updatedTableData });
+
+    try {
+      await updateCategoryTable(tableId, { tableData: updatedTableData });
+    } catch (error) {
+      console.error('Failed to remove table row:', error);
+    }
   };
 
   const handleEdit = (table: CategoryTable, row: CategoryTableData) => {
@@ -178,36 +182,31 @@ const TindakLanjut: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (editingTable && editingRow) {
-      // Update existing row
-      updateTableRow(editingTable.id, editingRow.id, {
-        division: formData.division,
-        jumlah: formData.jumlah,
-        proses: formData.proses,
-        selesai: formData.selesai,
-        belumDitindaklanjuti: formData.belumDitindaklanjuti,
-        selesaiBerkelanjutan: formData.selesaiBerkelanjutan,
-        status: formData.status,
-        targetPenyelesaian: formData.targetPenyelesaian,
-        detailArahan: formData.detailArahan,
-        checkPoint: formData.checkPoint,
-        deskripsiTindakLanjut: formData.deskripsiTindakLanjut,
-        catatanSekretaris: formData.catatanSekretaris,
-      });
-    } else if (editingTable) {
-      // Add new row
-      addTableRow(editingTable.id);
-    }
+    try {
+      if (editingRow) {
+        // Update existing row
+        await updateTableRow(editingTable!.id, editingRow.id, formData);
+      } else {
+        // Add new row
+        await addTableRow(editingTable!.id);
+      }
 
-    handleCloseModal();
+      handleCloseModal();
+    } catch (error) {
+      console.error('Failed to save tindak lanjut:', error);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteCategoryTable(id);
-    setDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCategoryTable(id);
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Failed to delete category table:', error);
+    }
   };
 
   const handleCloseModal = () => {
@@ -235,10 +234,10 @@ const TindakLanjut: React.FC = () => {
   // Filter and search logic
   const filteredTables = categoryTables.filter((table) => {
     const matchesCategory =
-      selectedCategory === "all" || table.categoryName === selectedCategory;
+      selectedCategory === "all" || (table.categoryName && table.categoryName === selectedCategory);
     const matchesSearch =
-      table.categoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      table.description.toLowerCase().includes(searchTerm.toLowerCase());
+      (table.categoryName && table.categoryName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (table.description && table.description.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
 
@@ -248,17 +247,17 @@ const TindakLanjut: React.FC = () => {
   const currentTables = filteredTables.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredTables.length / itemsPerPage);
 
-  const handleInlineEdit = (
+  const handleInlineEdit = async (
     tableId: string,
     rowId: string,
     field: string,
     value: string | number
   ) => {
-    const updates: Partial<CategoryTableData> = {};
-    updates[field as keyof CategoryTableData] = value as any;
-
-    // Auto-save the changes
-    updateTableRow(tableId, rowId, updates);
+    try {
+      await updateTableRow(tableId, rowId, { [field]: value });
+    } catch (error) {
+      console.error('Failed to update inline edit:', error);
+    }
   };
 
   const startEditing = (
@@ -359,8 +358,8 @@ const TindakLanjut: React.FC = () => {
           >
             <option value="all">Semua Kategori</option>
             {categoryTables.map((table) => (
-              <option key={table.id} value={table.categoryName}>
-                {table.categoryName}
+              <option key={table.id} value={table.categoryName || ''}>
+                {table.categoryName || 'Unnamed Category'}
               </option>
             ))}
           </select>
@@ -369,7 +368,15 @@ const TindakLanjut: React.FC = () => {
 
       {/* Data Tables */}
       <div className="space-y-6">
-        {currentTables.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8 bg-white rounded-lg shadow-sm">
+            <p className="text-gray-500">Loading data...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 bg-white rounded-lg shadow-sm">
+            <p className="text-red-500">Error: {error}</p>
+          </div>
+        ) : currentTables.length === 0 ? (
           <div className="text-center py-8 bg-white rounded-lg shadow-sm">
             <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">Belum ada data tabel yang tersedia</p>

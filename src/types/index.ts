@@ -26,9 +26,8 @@ export interface Arahan {
 
 export interface Category {
   id: string;
-  name: string;
+  categoryName: string;
   description: string;
-  division: string;
   createdAt: string;
   updatedAt: string;
 }

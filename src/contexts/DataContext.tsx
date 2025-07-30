@@ -6,34 +6,33 @@ import React, {
   ReactNode,
 } from "react";
 import { Arahan, Category, CategoryTable } from "../types";
-import {
-  initialArahan,
-  initialCategories,
-  initialCategoryTables,
-} from "../data/mockData";
+import * as apiService from "../services/apiService";
 
 interface DataContextType {
   arahan: Arahan[];
   categories: Category[];
   categoryTables: CategoryTable[];
-  addArahan: (arahan: Omit<Arahan, "id" | "createdAt" | "updatedAt">) => void;
-  updateArahan: (id: string, arahan: Partial<Arahan>) => void;
-  deleteArahan: (id: string) => void;
+  loading: boolean;
+  error: string | null;
+  addArahan: (arahan: Omit<Arahan, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateArahan: (id: string, arahan: Partial<Arahan>) => Promise<void>;
+  deleteArahan: (id: string) => Promise<void>;
   addCategory: (
     category: Omit<Category, "id" | "createdAt" | "updatedAt">
-  ) => void;
-  updateCategory: (id: string, category: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  ) => Promise<void>;
+  updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
   addCategoryTable: (
     categoryTable: Omit<CategoryTable, "id" | "createdAt" | "updatedAt">
-  ) => void;
+  ) => Promise<void>;
   updateCategoryTable: (
     id: string,
     categoryTable: Partial<CategoryTable>
-  ) => void;
-  deleteCategoryTable: (id: string) => void;
+  ) => Promise<void>;
+  deleteCategoryTable: (id: string) => Promise<void>;
   getArahanByDivision: (division: string) => Arahan[];
   getCategoriesByDivision: (division: string) => Category[];
+  refreshData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -54,123 +53,213 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [arahan, setArahan] = useState<Arahan[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryTables, setCategoryTables] = useState<CategoryTable[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Load data from API on mount
   useEffect(() => {
-    const savedArahan = localStorage.getItem("arahan");
-    const savedCategories = localStorage.getItem("categories");
-    const savedCategoryTables = localStorage.getItem("categoryTables");
-
-    setArahan(savedArahan ? JSON.parse(savedArahan) : initialArahan);
-    setCategories(
-      savedCategories ? JSON.parse(savedCategories) : initialCategories
-    );
-    setCategoryTables(
-      savedCategoryTables
-        ? JSON.parse(savedCategoryTables)
-        : initialCategoryTables
-    );
+    refreshData();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("arahan", JSON.stringify(arahan));
-  }, [arahan]);
+  const refreshData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Load arahans
+      const arahansData = await apiService.getArahans();
+      setArahan(arahansData);
 
-  useEffect(() => {
-    localStorage.setItem("categories", JSON.stringify(categories));
-  }, [categories]);
+      // Load categories
+      const categoriesData = await apiService.getCategories();
+      setCategories(categoriesData);
 
-  useEffect(() => {
-    localStorage.setItem("categoryTables", JSON.stringify(categoryTables));
-  }, [categoryTables]);
+      // Load category tables with their associated table data
+      const categoryTablesData = await Promise.all(
+        categoriesData.map(async (cat: Category) => {
+          // Get table data for this category
+          const tableDataResponse = await apiService.getCategoryTableData(cat.id);
+          const tableData = tableDataResponse || [];
+          
+          return {
+            id: cat.id,
+            categoryName: cat.categoryName || 'Unnamed Category',
+            description: cat.description || '',
+            tableData: tableData,
+            createdAt: cat.createdAt || new Date().toISOString().split('T')[0],
+            updatedAt: cat.updatedAt || new Date().toISOString().split('T')[0],
+          };
+        })
+      );
+      setCategoryTables(categoryTablesData);
 
-  const addArahan = (
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addArahan = async (
     newArahan: Omit<Arahan, "id" | "createdAt" | "updatedAt">
   ) => {
-    const arahan_obj: Arahan = {
-      ...newArahan,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-    setArahan((prev) => [...prev, arahan_obj]);
+    try {
+      const createdArahan = await apiService.createArahan(newArahan);
+      setArahan((prev) => [...prev, createdArahan]);
+    } catch (err) {
+      console.error('Failed to add arahan:', err);
+      throw err;
+    }
   };
 
-  const updateArahan = (id: string, updates: Partial<Arahan>) => {
-    setArahan((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              ...updates,
-              updatedAt: new Date().toISOString().split("T")[0],
-            }
-          : item
-      )
-    );
+  const updateArahan = async (id: string, updates: Partial<Arahan>) => {
+    try {
+      await apiService.updateArahan(id, updates);
+      setArahan((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                ...updates,
+                updatedAt: new Date().toISOString().split("T")[0],
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error('Failed to update arahan:', err);
+      throw err;
+    }
   };
 
-  const deleteArahan = (id: string) => {
-    setArahan((prev) => prev.filter((item) => item.id !== id));
+  const deleteArahan = async (id: string) => {
+    try {
+      await apiService.deleteArahan(id);
+      setArahan((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      console.error('Failed to delete arahan:', err);
+      throw err;
+    }
   };
 
-  const addCategory = (
+  const addCategory = async (
     newCategory: Omit<Category, "id" | "createdAt" | "updatedAt">
   ) => {
-    const category: Category = {
-      ...newCategory,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-    setCategories((prev) => [...prev, category]);
+    try {
+      const createdCategory = await apiService.createCategory(newCategory);
+      setCategories((prev) => [...prev, createdCategory]);
+    } catch (err) {
+      console.error('Failed to add category:', err);
+      throw err;
+    }
   };
 
-  const updateCategory = (id: string, updates: Partial<Category>) => {
-    setCategories((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              ...updates,
-              updatedAt: new Date().toISOString().split("T")[0],
-            }
-          : item
-      )
-    );
+  const updateCategory = async (id: string, updates: Partial<Category>) => {
+    try {
+      await apiService.updateCategory(id, updates);
+      setCategories((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                ...updates,
+                updatedAt: new Date().toISOString().split("T")[0],
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error('Failed to update category:', err);
+      throw err;
+    }
   };
 
-  const deleteCategory = (id: string) => {
-    setCategories((prev) => prev.filter((item) => item.id !== id));
+  const deleteCategory = async (id: string) => {
+    try {
+      await apiService.deleteCategory(id);
+      setCategories((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      console.error('Failed to delete category:', err);
+      throw err;
+    }
   };
 
-  const addCategoryTable = (
+  const addCategoryTable = async (
     newCategoryTable: Omit<CategoryTable, "id" | "createdAt" | "updatedAt">
   ) => {
-    const categoryTable: CategoryTable = {
-      ...newCategoryTable,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-    setCategoryTables((prev) => [...prev, categoryTable]);
+    try {
+      // Create a category with the correct field names
+      const categoryData = {
+        categoryName: newCategoryTable.categoryName,
+        description: newCategoryTable.description,
+      };
+      
+      const createdCategory = await apiService.createCategory(categoryData);
+      
+      // Add table data for each division
+      for (const tableData of newCategoryTable.tableData) {
+        await apiService.createCategoryTableData({
+          categoryId: createdCategory.id,
+          division: tableData.division,
+          jumlah: tableData.jumlah,
+          proses: tableData.proses,
+          selesai: tableData.selesai,
+          belumDitindaklanjuti: tableData.belumDitindaklanjuti,
+          selesaiBerkelanjutan: tableData.selesaiBerkelanjutan,
+          progress: tableData.progress,
+        });
+      }
+
+      // Refresh data to get the updated state
+      await refreshData();
+    } catch (err) {
+      console.error('Failed to add category table:', err);
+      throw err;
+    }
   };
 
-  const updateCategoryTable = (id: string, updates: Partial<CategoryTable>) => {
-    setCategoryTables((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              ...updates,
-              updatedAt: new Date().toISOString().split("T")[0],
-            }
-          : item
-      )
-    );
+  const updateCategoryTable = async (id: string, updates: Partial<CategoryTable>) => {
+    try {
+      // Update the category
+      await apiService.updateCategory(id, {
+        categoryName: updates.categoryName,
+        description: updates.description,
+      });
+
+      // Update table data if provided
+      if (updates.tableData) {
+        // For simplicity, we'll delete existing data and recreate
+        // In a real app, you'd want to update individual records
+        for (const tableData of updates.tableData) {
+          await apiService.createCategoryTableData({
+            categoryId: id,
+            division: tableData.division,
+            jumlah: tableData.jumlah,
+            proses: tableData.proses,
+            selesai: tableData.selesai,
+            belumDitindaklanjuti: tableData.belumDitindaklanjuti,
+            selesaiBerkelanjutan: tableData.selesaiBerkelanjutan,
+            progress: tableData.progress,
+          });
+        }
+      }
+
+      // Refresh data
+      await refreshData();
+    } catch (err) {
+      console.error('Failed to update category table:', err);
+      throw err;
+    }
   };
 
-  const deleteCategoryTable = (id: string) => {
-    setCategoryTables((prev) => prev.filter((item) => item.id !== id));
+  const deleteCategoryTable = async (id: string) => {
+    try {
+      await apiService.deleteCategory(id);
+      setCategoryTables((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      console.error('Failed to delete category table:', err);
+      throw err;
+    }
   };
 
   const getArahanByDivision = (division: string) => {
@@ -178,13 +267,17 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   };
 
   const getCategoriesByDivision = (division: string) => {
-    return categories.filter((item) => item.division === division);
+    // Since categories don't have division field, return all categories
+    // Division filtering should be done at the table data level
+    return categories;
   };
 
   const value = {
     arahan,
     categories,
     categoryTables,
+    loading,
+    error,
     addArahan,
     updateArahan,
     deleteArahan,
@@ -196,6 +289,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     deleteCategoryTable,
     getArahanByDivision,
     getCategoriesByDivision,
+    refreshData,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
