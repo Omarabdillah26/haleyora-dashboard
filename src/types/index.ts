@@ -47,6 +47,8 @@ export interface CategoryTableData {
   checkPoint?: string;
   deskripsiTindakLanjut?: string;
   catatanSekretaris?: string;
+  uploadedFiles?: string;
+  fileNames?: string;
 }
 
 export interface CategoryTable {

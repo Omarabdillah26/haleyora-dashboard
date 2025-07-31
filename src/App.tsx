@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { DataProvider } from './contexts/DataContext';
-import Login from './components/Login';
-import Layout from './components/Layout';
-import Dashboard from './components/Dashboard';
-import Categories from './components/Categories';
-import TindakLanjut from './components/TindakLanjut';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import DatabaseTest from './components/DatabaseTest';
+import React, { useState, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { DataProvider } from "./contexts/DataContext";
+import Login from "./components/Login";
+import Layout from "./components/Layout";
+import Dashboard from "./components/Dashboard";
+import Categories from "./components/Categories";
+import TindakLanjut from "./components/TindakLanjut";
+import Users from "./components/Users";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import DatabaseTest from "./components/DatabaseTest";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -21,12 +29,12 @@ class ErrorBoundary extends React.Component<
   }
 
   static getDerivedStateFromError(error: Error) {
-    console.error('Error Boundary caught error:', error);
+    console.error("Error Boundary caught error:", error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('App Error:', error, errorInfo);
+    console.error("App Error:", error, errorInfo);
   }
 
   render() {
@@ -34,9 +42,12 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="bg-white p-8 rounded-lg shadow-md max-w-md">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h1>
+            <h1 className="text-2xl font-bold text-red-600 mb-4">
+              Something went wrong
+            </h1>
             <p className="text-gray-600 mb-4">
-              The application encountered an error. Please try refreshing the page.
+              The application encountered an error. Please try refreshing the
+              page.
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -46,7 +57,9 @@ class ErrorBoundary extends React.Component<
             </button>
             {this.state.error && (
               <details className="mt-4">
-                <summary className="cursor-pointer text-sm text-gray-500">Error Details</summary>
+                <summary className="cursor-pointer text-sm text-gray-500">
+                  Error Details
+                </summary>
                 <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
                   {this.state.error.toString()}
                 </pre>
@@ -63,28 +76,41 @@ class ErrorBoundary extends React.Component<
 
 const AppContent: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Get active tab from current path
+  const getActiveTab = () => {
+    const path = location.pathname;
+    if (path === "/dashboard" || path === "/") return "dashboard";
+    if (path === "/categories") return "categories";
+    if (path.startsWith("/tindak-lanjut")) return "tindak-lanjut";
+    if (path === "/users") return "users";
+    if (path === "/database-test") return "database-test";
+    return "dashboard";
+  };
+
+  const activeTab = getActiveTab();
+
   // Error handling for authentication
   useEffect(() => {
-    console.log('AppContent mounted');
-    
+    console.log("AppContent mounted");
+
     const handleError = (event: ErrorEvent) => {
-      console.error('Global error:', event.error);
-      setError(event.error?.message || 'An error occurred');
+      console.error("Global error:", event.error);
+      setError(event.error?.message || "An error occurred");
     };
 
-    window.addEventListener('error', handleError);
-    
+    window.addEventListener("error", handleError);
+
     // Set loading to false after a short delay
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 100);
 
     return () => {
-      window.removeEventListener('error', handleError);
+      window.removeEventListener("error", handleError);
       clearTimeout(timer);
     };
   }, []);
@@ -118,65 +144,66 @@ const AppContent: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    console.log('User not authenticated, showing login');
+    console.log("User not authenticated, showing login");
     return <Login />;
   }
 
   const renderContent = () => {
     try {
-      console.log('Rendering content for tab:', activeTab);
-      
-      switch (activeTab) {
-        case 'dashboard':
-          return <Dashboard />;
-        case 'categories':
-          return <Categories />;
-        case 'tindak-lanjut':
-          return <TindakLanjut />;
-        case 'database-test':
-          return <DatabaseTest />;
-        default:
-          return <Dashboard />;
-      }
+      console.log("Rendering content for tab:", activeTab);
+
+      return (
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/tindak-lanjut" element={<TindakLanjut />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/database-test" element={<DatabaseTest />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      );
     } catch (err) {
-      console.error('Error rendering content:', err);
+      console.error("Error rendering content:", err);
       return (
         <div className="p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Error Loading Content</h2>
+          <h2 className="text-xl font-bold text-red-600 mb-2">
+            Error Loading Content
+          </h2>
           <p className="text-gray-600">Failed to load the requested page.</p>
           <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
-            {err instanceof Error ? err.toString() : 'Unknown error'}
+            {err instanceof Error ? err.toString() : "Unknown error"}
           </pre>
         </div>
       );
     }
   };
 
-  console.log('Rendering main app content');
-  
+  console.log("Rendering main app content");
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar />
       <div className="flex-1 flex flex-col">
         <Header />
-        <main className="flex-1 p-6">
-          {renderContent()}
-        </main>
+        <main className="flex-1 p-6">{renderContent()}</main>
       </div>
     </div>
   );
 };
 
 function App() {
-  console.log('App component rendering');
-  
+  console.log("App component rendering");
+
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <DataProvider>
-          <AppContent />
-        </DataProvider>
-      </AuthProvider>
+      <Router>
+        <AuthProvider>
+          <DataProvider>
+            <AppContent />
+          </DataProvider>
+        </AuthProvider>
+      </Router>
     </ErrorBoundary>
   );
 }

@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { useRealTimeSync } from "../hooks/useRealTimeSync";
+import { useSearchParams } from "react-router-dom";
 import {
   Plus,
   Edit,
@@ -14,8 +15,12 @@ import {
   User,
   Target,
   FileText,
+  Upload,
+  Download,
+  Paperclip,
 } from "lucide-react";
 import { CategoryTable, CategoryTableData } from "../types";
+import { uploadFiles, deleteFile, getFileUrl } from "../services/apiService";
 
 const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
 
@@ -23,6 +28,7 @@ const TindakLanjut: React.FC = () => {
   const { user } = useAuth();
   const { categoryTables, updateCategoryTable, loading, error } = useData();
   const { syncData } = useRealTimeSync();
+  const [searchParams] = useSearchParams();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -30,11 +36,21 @@ const TindakLanjut: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [divisionFilter, setDivisionFilter] = useState<string>("");
   const [editingRow, setEditingRow] = useState<{
     tableId: string;
     rowId: string;
     data: CategoryTableData;
   } | null>(null);
+
+  // Read division filter from URL parameters
+  useEffect(() => {
+    const division = searchParams.get("division");
+    if (division) {
+      setDivisionFilter(division);
+      setSearchTerm(division); // Also set search term to filter by division
+    }
+  }, [searchParams]);
 
   const [formData, setFormData] = useState({
     selectedCategoryId: "",
@@ -46,6 +62,10 @@ const TindakLanjut: React.FC = () => {
     deskripsiTindakLanjut: "",
     catatanSekretaris: "",
   });
+
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [fileNames, setFileNames] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getProgressColor = (progress: number) => {
     if (progress >= 80) return "bg-green-500";
@@ -120,6 +140,21 @@ const TindakLanjut: React.FC = () => {
       deskripsiTindakLanjut: data.deskripsiTindakLanjut || "",
       catatanSekretaris: data.catatanSekretaris || "",
     });
+
+    // Load existing files
+    try {
+      if (data.uploadedFiles) {
+        setUploadedFiles(JSON.parse(data.uploadedFiles));
+      }
+      if (data.fileNames) {
+        setFileNames(JSON.parse(data.fileNames));
+      }
+    } catch (error) {
+      console.error("Failed to parse file data:", error);
+      setUploadedFiles([]);
+      setFileNames([]);
+    }
+
     setIsModalOpen(true);
   };
 
@@ -167,6 +202,8 @@ const TindakLanjut: React.FC = () => {
         checkPoint: formData.checkPoint,
         deskripsiTindakLanjut: formData.deskripsiTindakLanjut,
         catatanSekretaris: formData.catatanSekretaris,
+        uploadedFiles: JSON.stringify(uploadedFiles),
+        fileNames: JSON.stringify(fileNames),
       };
 
       let updatedTableData: CategoryTableData[];
@@ -204,10 +241,55 @@ const TindakLanjut: React.FC = () => {
       deskripsiTindakLanjut: "",
       catatanSekretaris: "",
     });
+    setUploadedFiles([]);
+    setFileNames([]);
   };
 
   const handleFormDataChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const fileArray = Array.from(files);
+      const uploadedFileData = await uploadFiles(fileArray);
+
+      setUploadedFiles((prev) => [...prev, ...uploadedFileData]);
+      setFileNames((prev) => [...prev, ...fileArray.map((f) => f.name)]);
+    } catch (error) {
+      console.error("Failed to upload files:", error);
+      alert("Gagal mengupload file. Silakan coba lagi.");
+    }
+  };
+
+  const handleFileDelete = async (index: number) => {
+    try {
+      const fileToDelete = uploadedFiles[index];
+      if (fileToDelete.filename) {
+        await deleteFile(fileToDelete.filename);
+      }
+
+      setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+      setFileNames((prev) => prev.filter((_, i) => i !== index));
+    } catch (error) {
+      console.error("Failed to delete file:", error);
+      alert("Gagal menghapus file. Silakan coba lagi.");
+    }
+  };
+
+  const handleFileDownload = (filename: string, originalName: string) => {
+    const url = getFileUrl(filename);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = originalName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Filter and search logic
@@ -232,14 +314,19 @@ const TindakLanjut: React.FC = () => {
     }))
   );
 
+  // Apply division filter if specified
+  const filteredTindakLanjut = divisionFilter
+    ? allTindakLanjut.filter((row) => row.division === divisionFilter)
+    : allTindakLanjut;
+
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentTindakLanjut = allTindakLanjut.slice(
+  const currentTindakLanjut = filteredTindakLanjut.slice(
     indexOfFirstItem,
     indexOfLastItem
   );
-  const totalPages = Math.ceil(allTindakLanjut.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredTindakLanjut.length / itemsPerPage);
 
   if (loading) {
     return (
@@ -277,15 +364,35 @@ const TindakLanjut: React.FC = () => {
           </nav>
           <h1 className="text-3xl font-bold text-gray-900 mt-2">
             Tindak Lanjut
+            {divisionFilter && (
+              <span className="text-lg font-normal text-orange-600 ml-2">
+                - Filter: {divisionFilter}
+              </span>
+            )}
           </h1>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New tindak lanjut</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          {divisionFilter && (
+            <button
+              onClick={() => {
+                setDivisionFilter("");
+                setSearchTerm("");
+                setCurrentPage(1);
+              }}
+              className="flex items-center space-x-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              <span>Clear Filter</span>
+            </button>
+          )}
+          <button
+            onClick={handleAddNew}
+            className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New tindak lanjut</span>
+          </button>
+        </div>
       </div>
 
       {/* Search and Filter */}
@@ -303,7 +410,9 @@ const TindakLanjut: React.FC = () => {
           </div>
           <div className="flex items-center space-x-2">
             <Filter className="w-4 h-4 text-gray-500" />
-            <span className="text-sm text-gray-500">0</span>
+            <span className="text-sm text-gray-500">
+              {filteredTindakLanjut.length} results
+            </span>
           </div>
           <button className="p-2 text-gray-500 hover:text-gray-700">
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -351,6 +460,9 @@ const TindakLanjut: React.FC = () => {
                   Deskripsi Tindak Lanjut
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Files
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -387,6 +499,25 @@ const TindakLanjut: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                     {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {row.uploadedFiles && row.uploadedFiles !== "[]" ? (
+                      <div className="flex items-center space-x-1">
+                        <Paperclip className="w-4 h-4 text-gray-500" />
+                        <span className="text-xs text-gray-600">
+                          {(() => {
+                            try {
+                              const files = JSON.parse(row.uploadedFiles);
+                              return `${files.length} file(s)`;
+                            } catch {
+                              return "0 file(s)";
+                            }
+                          })()}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">No files</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
@@ -681,6 +812,85 @@ const TindakLanjut: React.FC = () => {
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 />
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload File
+                </label>
+                <div className="space-y-3">
+                  {/* File Input */}
+                  <div className="flex items-center space-x-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>Choose Files</span>
+                    </button>
+                    <span className="text-sm text-gray-500">
+                      Max 5 files, 10MB each
+                    </span>
+                  </div>
+
+                  {/* File List */}
+                  {uploadedFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        Uploaded Files:
+                      </h4>
+                      {uploadedFiles.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <Paperclip className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-700">
+                              {fileNames[index] || file.originalname}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleFileDownload(
+                                  file.filename,
+                                  fileNames[index] || file.originalname
+                                )
+                              }
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                              title="Download"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleFileDelete(index)}
+                              className="p-1 text-red-600 hover:text-red-800"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Action Buttons */}

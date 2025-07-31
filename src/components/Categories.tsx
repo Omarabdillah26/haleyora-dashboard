@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { useRealTimeSync } from "../hooks/useRealTimeSync";
@@ -10,6 +11,7 @@ import {
   X,
   Filter,
   Plus as PlusIcon,
+  ArrowRight,
 } from "lucide-react";
 import { CategoryTable, CategoryTableData } from "../types";
 
@@ -17,6 +19,7 @@ const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
 
 const Categories: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     categoryTables,
     addCategoryTable,
@@ -94,6 +97,11 @@ const Categories: React.FC = () => {
       ...prev,
       tableData: prev.tableData.filter((_, i) => i !== index),
     }));
+  };
+
+  const navigateToTindakLanjut = (division: string) => {
+    // Navigate to Tindak Lanjut page with division filter
+    navigate(`/tindak-lanjut?division=${encodeURIComponent(division)}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -260,7 +268,16 @@ const Categories: React.FC = () => {
                             }
                           >
                             <td className="py-3 px-4 font-medium text-orange-600">
-                              {data.division}
+                              <button
+                                onClick={() =>
+                                  navigateToTindakLanjut(data.division)
+                                }
+                                className="flex items-center space-x-2 hover:text-orange-800 hover:underline transition-colors"
+                                title={`Klik untuk melihat tindak lanjut ${data.division}`}
+                              >
+                                <span>{data.division}</span>
+                                <ArrowRight className="w-4 h-4" />
+                              </button>
                             </td>
                             <td className="py-3 px-4 text-center">
                               {data.jumlah}

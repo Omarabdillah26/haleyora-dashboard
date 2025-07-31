@@ -269,6 +269,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               checkPoint: tableData.checkPoint,
               deskripsiTindakLanjut: tableData.deskripsiTindakLanjut,
               catatanSekretaris: tableData.catatanSekretaris,
+              uploadedFiles: tableData.uploadedFiles || "[]",
+              fileNames: tableData.fileNames || "[]",
             });
           } else {
             // Create new record
@@ -287,6 +289,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
               checkPoint: tableData.checkPoint,
               deskripsiTindakLanjut: tableData.deskripsiTindakLanjut,
               catatanSekretaris: tableData.catatanSekretaris,
+              uploadedFiles: tableData.uploadedFiles || "[]",
+              fileNames: tableData.fileNames || "[]",
             });
           }
         }

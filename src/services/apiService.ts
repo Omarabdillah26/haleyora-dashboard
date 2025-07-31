@@ -134,3 +134,34 @@ export const deleteArahan = async (id: string) => {
   });
   return response;
 };
+
+// File Upload API
+export const uploadFiles = async (files: File[]) => {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const response = await fetch(`${API_BASE_URL}/upload-files`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to upload files");
+  }
+
+  const result = await response.json();
+  return result.data;
+};
+
+export const deleteFile = async (filename: string) => {
+  const response = await apiCall(`/delete-file/${filename}`, {
+    method: "DELETE",
+  });
+  return response;
+};
+
+export const getFileUrl = (filename: string) => {
+  return `${API_BASE_URL}/uploads/${filename}`;
+};

@@ -1,21 +1,57 @@
-import React from 'react';
-import { Home, Grid3X3, ClipboardList, Building2, Database } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Home,
+  Grid3X3,
+  ClipboardList,
+  Building2,
+  Database,
+  Users,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
-interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'categories', label: 'Rincian Kategori', icon: Grid3X3 },
-    { id: 'tindak-lanjut', label: 'Tindak Lanjut', icon: ClipboardList },
-    // { id: 'database-test', label: 'Database Test', icon: Database },
+    { id: "dashboard", label: "Dashboard", icon: Home, path: "/dashboard" },
+    {
+      id: "categories",
+      label: "Rincian Kategori",
+      icon: Grid3X3,
+      path: "/categories",
+    },
+    {
+      id: "tindak-lanjut",
+      label: "Tindak Lanjut",
+      icon: ClipboardList,
+      path: "/tindak-lanjut",
+    },
+    // Show Users menu only for SUPER_ADMIN
+    ...(user?.role === "SUPER_ADMIN" ? [
+      {
+        id: "users",
+        label: "Users",
+        icon: Users,
+        path: "/users",
+      }
+    ] : []),
+    // { id: 'database-test', label: 'Database Test', icon: Database, path: '/database-test' },
   ];
+
+  const getActiveTab = () => {
+    const path = location.pathname;
+    if (path === "/dashboard" || path === "/") return "dashboard";
+    if (path === "/categories") return "categories";
+    if (path.startsWith("/tindak-lanjut")) return "tindak-lanjut";
+    if (path === "/users") return "users";
+    if (path === "/database-test") return "database-test";
+    return "dashboard";
+  };
+
+  const activeTab = getActiveTab();
 
   return (
     <div className="w-64 bg-white shadow-lg h-screen sticky top-0">
@@ -38,11 +74,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
             return (
               <li key={item.id}>
                 <button
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => navigate(item.path)}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
                     activeTab === item.id
-                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
                   <Icon className="w-5 h-5" />
