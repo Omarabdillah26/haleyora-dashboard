@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
+import { useRealTimeSync } from "../hooks/useRealTimeSync";
 import {
   Filter,
   FileText,
@@ -28,14 +29,15 @@ const Dashboard: React.FC = () => {
     getCategoriesByDivision,
     categoryTables,
   } = useData();
-  
+  const { syncData } = useRealTimeSync();
+
   // Debug: Log available data
   console.log("Dashboard Debug Info:");
   console.log("User:", user);
   console.log("Categories:", categories);
   console.log("Category Tables:", categoryTables);
   console.log("Arahan:", arahan);
-  
+
   const [selectedDivision, setSelectedDivision] = useState(
     user?.role === "SUPER_ADMIN" ? "BOD-1" : user?.role || ""
   );
@@ -151,8 +153,14 @@ const Dashboard: React.FC = () => {
             arahan.division === division &&
             relevantCategories.some(
               (cat) =>
-                (arahan.title && arahan.title.toLowerCase().includes(cat.categoryName?.toLowerCase() || '')) ||
-                (arahan.description && arahan.description.toLowerCase().includes(cat.categoryName?.toLowerCase() || ''))
+                (arahan.title &&
+                  arahan.title
+                    .toLowerCase()
+                    .includes(cat.categoryName?.toLowerCase() || "")) ||
+                (arahan.description &&
+                  arahan.description
+                    .toLowerCase()
+                    .includes(cat.categoryName?.toLowerCase() || ""))
             )
         );
 
@@ -169,14 +177,22 @@ const Dashboard: React.FC = () => {
 
   // Generate pie chart data from category tables
   const generateCategoryTablePieChartData = (categoryTable: CategoryTable) => {
-    console.log(`Generating pie chart for ${categoryTable.categoryName}:`, categoryTable.tableData);
-    
+    console.log(
+      `Generating pie chart for ${categoryTable.categoryName}:`,
+      categoryTable.tableData
+    );
+
     const divisionData = categoryTable.tableData
       .filter((data) => data.jumlah > 0) // Only include data with valid jumlah
       .map((data) => {
         const divisionIndex = divisions.indexOf(data.division);
-        const progress = typeof data.progress === 'string' ? parseFloat(data.progress) : (data.progress || 0);
-        console.log(`Division ${data.division}: progress=${progress}, jumlah=${data.jumlah}`);
+        const progress =
+          typeof data.progress === "string"
+            ? parseFloat(data.progress)
+            : data.progress || 0;
+        console.log(
+          `Division ${data.division}: progress=${progress}, jumlah=${data.jumlah}`
+        );
         return {
           name: data.division,
           value: progress, // Progress percentage for pie chart
@@ -194,7 +210,10 @@ const Dashboard: React.FC = () => {
     if (divisionData.length === 0 && categoryTable.tableData.length > 0) {
       const firstData = categoryTable.tableData[0];
       const divisionIndex = divisions.indexOf(firstData.division);
-      const progress = typeof firstData.progress === 'string' ? parseFloat(firstData.progress) : (firstData.progress || 0);
+      const progress =
+        typeof firstData.progress === "string"
+          ? parseFloat(firstData.progress)
+          : firstData.progress || 0;
       divisionData.push({
         name: firstData.division,
         value: progress,
@@ -207,7 +226,10 @@ const Dashboard: React.FC = () => {
       });
     }
 
-    console.log(`Generated pie data for ${categoryTable.categoryName}:`, divisionData);
+    console.log(
+      `Generated pie data for ${categoryTable.categoryName}:`,
+      divisionData
+    );
     return divisionData;
   };
 
@@ -408,17 +430,19 @@ const Dashboard: React.FC = () => {
                   selectedDivisionFilter === "all" ||
                   data.name === selectedDivisionFilter
               );
-              
+
               // Debug info
               console.log(`Table: ${table.categoryName}`);
               console.log(`Raw table data:`, table.tableData);
               console.log(`Generated pie data:`, pieData);
-              
+
               const totalProgress =
                 pieData.length > 0
                   ? Math.round(
-                      pieData.reduce((sum, item) => sum + (item.value || 0), 0) /
-                        pieData.length
+                      pieData.reduce(
+                        (sum, item) => sum + (item.value || 0),
+                        0
+                      ) / pieData.length
                     )
                   : 0;
 
@@ -450,7 +474,7 @@ const Dashboard: React.FC = () => {
                       {/* <div className="text-xs text-gray-500 mb-2">
                         Debug: {pieData.length} items, values: {pieData.map(d => d.value).join(', ')}
                       </div> */}
-                      
+
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -482,7 +506,9 @@ const Dashboard: React.FC = () => {
                       <div className="text-center text-gray-500">
                         <PieChartIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
                         <p>Belum ada data</p>
-                        <p className="text-xs">Debug: pieData.length = {pieData.length}</p>
+                        <p className="text-xs">
+                          Debug: pieData.length = {pieData.length}
+                        </p>
                       </div>
                     </div>
                   )}

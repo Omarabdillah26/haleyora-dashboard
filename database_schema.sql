@@ -36,6 +36,12 @@ CREATE TABLE IF NOT EXISTS category_table_data (
     belumDitindaklanjuti INT DEFAULT 0,
     selesaiBerkelanjutan INT DEFAULT 0,
     progress DECIMAL(5,2) DEFAULT 0.00,
+    status ENUM('belum_ditindaklanjuti', 'dalam_proses', 'selesai', 'selesai_berkelanjutan') DEFAULT 'belum_ditindaklanjuti',
+    targetPenyelesaian DATE,
+    detailArahan TEXT,
+    checkPoint VARCHAR(255),
+    deskripsiTindakLanjut TEXT,
+    catatanSekretaris TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE CASCADE

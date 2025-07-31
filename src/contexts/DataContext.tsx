@@ -14,7 +14,9 @@ interface DataContextType {
   categoryTables: CategoryTable[];
   loading: boolean;
   error: string | null;
-  addArahan: (arahan: Omit<Arahan, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  addArahan: (
+    arahan: Omit<Arahan, "id" | "createdAt" | "updatedAt">
+  ) => Promise<void>;
   updateArahan: (id: string, arahan: Partial<Arahan>) => Promise<void>;
   deleteArahan: (id: string) => Promise<void>;
   addCategory: (
@@ -77,24 +79,25 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const categoryTablesData = await Promise.all(
         categoriesData.map(async (cat: Category) => {
           // Get table data for this category
-          const tableDataResponse = await apiService.getCategoryTableData(cat.id);
+          const tableDataResponse = await apiService.getCategoryTableData(
+            cat.id
+          );
           const tableData = tableDataResponse || [];
-          
+
           return {
             id: cat.id,
-            categoryName: cat.categoryName || 'Unnamed Category',
-            description: cat.description || '',
+            categoryName: cat.categoryName || "Unnamed Category",
+            description: cat.description || "",
             tableData: tableData,
-            createdAt: cat.createdAt || new Date().toISOString().split('T')[0],
-            updatedAt: cat.updatedAt || new Date().toISOString().split('T')[0],
+            createdAt: cat.createdAt || new Date().toISOString().split("T")[0],
+            updatedAt: cat.updatedAt || new Date().toISOString().split("T")[0],
           };
         })
       );
       setCategoryTables(categoryTablesData);
-
     } catch (err) {
-      console.error('Failed to load data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.error("Failed to load data:", err);
+      setError(err instanceof Error ? err.message : "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -107,7 +110,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const createdArahan = await apiService.createArahan(newArahan);
       setArahan((prev) => [...prev, createdArahan]);
     } catch (err) {
-      console.error('Failed to add arahan:', err);
+      console.error("Failed to add arahan:", err);
       throw err;
     }
   };
@@ -127,7 +130,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         )
       );
     } catch (err) {
-      console.error('Failed to update arahan:', err);
+      console.error("Failed to update arahan:", err);
       throw err;
     }
   };
@@ -137,7 +140,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       await apiService.deleteArahan(id);
       setArahan((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
-      console.error('Failed to delete arahan:', err);
+      console.error("Failed to delete arahan:", err);
       throw err;
     }
   };
@@ -149,7 +152,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const createdCategory = await apiService.createCategory(newCategory);
       setCategories((prev) => [...prev, createdCategory]);
     } catch (err) {
-      console.error('Failed to add category:', err);
+      console.error("Failed to add category:", err);
       throw err;
     }
   };
@@ -169,7 +172,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         )
       );
     } catch (err) {
-      console.error('Failed to update category:', err);
+      console.error("Failed to update category:", err);
       throw err;
     }
   };
@@ -179,7 +182,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       await apiService.deleteCategory(id);
       setCategories((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
-      console.error('Failed to delete category:', err);
+      console.error("Failed to delete category:", err);
       throw err;
     }
   };
@@ -193,9 +196,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         categoryName: newCategoryTable.categoryName,
         description: newCategoryTable.description,
       };
-      
+
       const createdCategory = await apiService.createCategory(categoryData);
-      
+
       // Add table data for each division
       for (const tableData of newCategoryTable.tableData) {
         await apiService.createCategoryTableData({
@@ -207,47 +210,92 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           belumDitindaklanjuti: tableData.belumDitindaklanjuti,
           selesaiBerkelanjutan: tableData.selesaiBerkelanjutan,
           progress: tableData.progress,
+          status: tableData.status || "belum_ditindaklanjuti",
+          targetPenyelesaian: tableData.targetPenyelesaian,
+          detailArahan: tableData.detailArahan,
+          checkPoint: tableData.checkPoint,
+          deskripsiTindakLanjut: tableData.deskripsiTindakLanjut,
+          catatanSekretaris: tableData.catatanSekretaris,
         });
       }
 
       // Refresh data to get the updated state
       await refreshData();
     } catch (err) {
-      console.error('Failed to add category table:', err);
+      console.error("Failed to add category table:", err);
       throw err;
     }
   };
 
-  const updateCategoryTable = async (id: string, updates: Partial<CategoryTable>) => {
+  const updateCategoryTable = async (
+    id: string,
+    updates: Partial<CategoryTable>
+  ) => {
     try {
-      // Update the category
-      await apiService.updateCategory(id, {
-        categoryName: updates.categoryName,
-        description: updates.description,
-      });
+      // Update the category if categoryName or description is provided
+      if (updates.categoryName || updates.description) {
+        await apiService.updateCategory(id, {
+          categoryName: updates.categoryName,
+          description: updates.description,
+        });
+      }
 
       // Update table data if provided
       if (updates.tableData) {
-        // For simplicity, we'll delete existing data and recreate
-        // In a real app, you'd want to update individual records
+        // Get existing table data
+        const existingTableData = await apiService.getCategoryTableData(id);
+
+        // Create a map of existing data by ID for easy lookup
+        const existingDataMap = new Map(
+          existingTableData.map((item: any) => [item.id, item])
+        );
+
+        // Process each table data item
         for (const tableData of updates.tableData) {
-          await apiService.createCategoryTableData({
-            categoryId: id,
-            division: tableData.division,
-            jumlah: tableData.jumlah,
-            proses: tableData.proses,
-            selesai: tableData.selesai,
-            belumDitindaklanjuti: tableData.belumDitindaklanjuti,
-            selesaiBerkelanjutan: tableData.selesaiBerkelanjutan,
-            progress: tableData.progress,
-          });
+          if (existingDataMap.has(tableData.id)) {
+            // Update existing record
+            await apiService.updateCategoryTableData(tableData.id, {
+              categoryId: id,
+              division: tableData.division,
+              jumlah: tableData.jumlah,
+              proses: tableData.proses,
+              selesai: tableData.selesai,
+              belumDitindaklanjuti: tableData.belumDitindaklanjuti,
+              selesaiBerkelanjutan: tableData.selesaiBerkelanjutan,
+              progress: tableData.progress,
+              status: tableData.status,
+              targetPenyelesaian: tableData.targetPenyelesaian,
+              detailArahan: tableData.detailArahan,
+              checkPoint: tableData.checkPoint,
+              deskripsiTindakLanjut: tableData.deskripsiTindakLanjut,
+              catatanSekretaris: tableData.catatanSekretaris,
+            });
+          } else {
+            // Create new record
+            await apiService.createCategoryTableData({
+              categoryId: id,
+              division: tableData.division,
+              jumlah: tableData.jumlah,
+              proses: tableData.proses,
+              selesai: tableData.selesai,
+              belumDitindaklanjuti: tableData.belumDitindaklanjuti,
+              selesaiBerkelanjutan: tableData.selesaiBerkelanjutan,
+              progress: tableData.progress,
+              status: tableData.status,
+              targetPenyelesaian: tableData.targetPenyelesaian,
+              detailArahan: tableData.detailArahan,
+              checkPoint: tableData.checkPoint,
+              deskripsiTindakLanjut: tableData.deskripsiTindakLanjut,
+              catatanSekretaris: tableData.catatanSekretaris,
+            });
+          }
         }
       }
 
-      // Refresh data
+      // Refresh data to ensure all components are updated
       await refreshData();
     } catch (err) {
-      console.error('Failed to update category table:', err);
+      console.error("Failed to update category table:", err);
       throw err;
     }
   };
@@ -257,7 +305,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       await apiService.deleteCategory(id);
       setCategoryTables((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
-      console.error('Failed to delete category table:', err);
+      console.error("Failed to delete category table:", err);
       throw err;
     }
   };

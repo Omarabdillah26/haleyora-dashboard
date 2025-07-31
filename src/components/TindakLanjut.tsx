@@ -1,15 +1,19 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
+import { useRealTimeSync } from "../hooks/useRealTimeSync";
 import {
   Plus,
   Edit,
   Trash2,
-  ClipboardList,
   X,
   Search,
   Filter,
   Eye,
+  Calendar,
+  User,
+  Target,
+  FileText,
 } from "lucide-react";
 import { CategoryTable, CategoryTableData } from "../types";
 
@@ -17,27 +21,24 @@ const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
 
 const TindakLanjut: React.FC = () => {
   const { user } = useAuth();
-  const { categoryTables, updateCategoryTable, deleteCategoryTable, loading, error } =
-    useData();
+  const { categoryTables, updateCategoryTable, loading, error } = useData();
+  const { syncData } = useRealTimeSync();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTable, setEditingTable] = useState<CategoryTable | null>(null);
-  const [editingRow, setEditingRow] = useState<CategoryTableData | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [editingRow, setEditingRow] = useState<{
+    tableId: string;
+    rowId: string;
+    data: CategoryTableData;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
-    categoryName: "",
+    selectedCategoryId: "",
     division: "BOD-1",
-    jumlah: 0,
-    proses: 0,
-    selesai: 0,
-    belumDitindaklanjuti: 0,
-    selesaiBerkelanjutan: 0,
-    progress: 0,
     status: "belum_ditindaklanjuti",
     targetPenyelesaian: "",
     detailArahan: "",
@@ -46,13 +47,6 @@ const TindakLanjut: React.FC = () => {
     catatanSekretaris: "",
   });
 
-  const [editingCell, setEditingCell] = useState<{
-    tableId: string;
-    rowId: string;
-    field: string;
-  } | null>(null);
-  const [editValue, setEditValue] = useState<string>("");
-
   const getProgressColor = (progress: number) => {
     if (progress >= 80) return "bg-green-500";
     if (progress >= 60) return "bg-orange-500";
@@ -60,118 +54,45 @@ const TindakLanjut: React.FC = () => {
     return "bg-gray-500";
   };
 
-  const getStatusText = (progress: number) => {
-    if (progress >= 80) return "Selesai";
-    if (progress >= 60) return "Proses";
-    if (progress >= 40) return "Selesai Berkelanjutan";
-    return "Belum Ditindaklanjuti";
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "selesai":
+        return (
+          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+            Selesai
+          </span>
+        );
+      case "dalam_proses":
+        return (
+          <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+            Proses
+          </span>
+        );
+      case "selesai_berkelanjutan":
+        return (
+          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+            Selesai Berkelanjutan
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+            Belum Ditindaklanjuti
+          </span>
+        );
+    }
   };
 
-  const calculateProgress = (data: CategoryTableData) => {
-    const total = data.jumlah;
-    const completed = data.selesai + data.selesaiBerkelanjutan;
+  const calculateProgress = (data: Partial<CategoryTableData>) => {
+    const total = data.jumlah || 0;
+    const completed = (data.selesai || 0) + (data.selesaiBerkelanjutan || 0);
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  const updateTableRow = async (
-    tableId: string,
-    rowId: string,
-    updates: Partial<CategoryTableData>
-  ) => {
-    const table = categoryTables.find((t) => t.id === tableId);
-    if (!table) return;
-
-    const updatedTableData = table.tableData.map((row) => {
-      if (row.id === rowId) {
-        const updatedRow = { ...row, ...updates };
-        // Recalculate progress
-        const total = updatedRow.jumlah;
-        const completed = updatedRow.selesai + updatedRow.selesaiBerkelanjutan;
-        updatedRow.progress =
-          total > 0 ? Math.round((completed / total) * 100) : 0;
-        return updatedRow;
-      }
-      return row;
-    });
-
-    try {
-      await updateCategoryTable(tableId, { tableData: updatedTableData });
-    } catch (error) {
-      console.error('Failed to update table row:', error);
-    }
-  };
-
-  const addTableRow = async (tableId: string) => {
-    const table = categoryTables.find((t) => t.id === tableId);
-    if (!table) return;
-
-    const newRow: CategoryTableData = {
-      id: Date.now().toString(),
-      division: "BOD-1",
-      jumlah: 0,
-      proses: 0,
-      selesai: 0,
-      belumDitindaklanjuti: 0,
-      selesaiBerkelanjutan: 0,
-      progress: 0,
-    };
-
-    const updatedTableData = [...table.tableData, newRow];
-
-    try {
-      await updateCategoryTable(tableId, { tableData: updatedTableData });
-    } catch (error) {
-      console.error('Failed to add table row:', error);
-    }
-  };
-
-  const removeTableRow = async (tableId: string, rowId: string) => {
-    const table = categoryTables.find((t) => t.id === tableId);
-    if (!table) return;
-
-    const updatedTableData = table.tableData.filter((row) => row.id !== rowId);
-
-    try {
-      await updateCategoryTable(tableId, { tableData: updatedTableData });
-    } catch (error) {
-      console.error('Failed to remove table row:', error);
-    }
-  };
-
-  const handleEdit = (table: CategoryTable, row: CategoryTableData) => {
-    setEditingTable(table);
-    setEditingRow(row);
+  const handleAddNew = () => {
     setFormData({
-      categoryName: table.categoryName,
-      division: row.division,
-      jumlah: row.jumlah,
-      proses: row.proses,
-      selesai: row.selesai,
-      belumDitindaklanjuti: row.belumDitindaklanjuti,
-      selesaiBerkelanjutan: row.selesaiBerkelanjutan,
-      progress: row.progress,
-      status: row.status || "belum_ditindaklanjuti",
-      targetPenyelesaian: row.targetPenyelesaian || "",
-      detailArahan: row.detailArahan || "",
-      checkPoint: row.checkPoint || "",
-      deskripsiTindakLanjut: row.deskripsiTindakLanjut || "",
-      catatanSekretaris: row.catatanSekretaris || "",
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleAddNew = (table: CategoryTable) => {
-    setEditingTable(table);
-    setEditingRow(null);
-    setFormData({
-      categoryName: table.categoryName,
+      selectedCategoryId: "",
       division: "BOD-1",
-      jumlah: 0,
-      proses: 0,
-      selesai: 0,
-      belumDitindaklanjuti: 0,
-      selesaiBerkelanjutan: 0,
-      progress: 0,
       status: "belum_ditindaklanjuti",
       targetPenyelesaian: "",
       detailArahan: "",
@@ -179,49 +100,103 @@ const TindakLanjut: React.FC = () => {
       deskripsiTindakLanjut: "",
       catatanSekretaris: "",
     });
+    setEditingRow(null);
     setIsModalOpen(true);
+  };
+
+  const handleEdit = (
+    tableId: string,
+    rowId: string,
+    data: CategoryTableData
+  ) => {
+    setEditingRow({ tableId, rowId, data });
+    setFormData({
+      selectedCategoryId: tableId,
+      division: data.division,
+      status: data.status || "belum_ditindaklanjuti",
+      targetPenyelesaian: data.targetPenyelesaian || "",
+      detailArahan: data.detailArahan || "",
+      checkPoint: data.checkPoint || "",
+      deskripsiTindakLanjut: data.deskripsiTindakLanjut || "",
+      catatanSekretaris: data.catatanSekretaris || "",
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (tableId: string, rowId: string) => {
+    try {
+      const table = categoryTables.find((t) => t.id === tableId);
+      if (!table) return;
+
+      const updatedTableData = table.tableData.filter(
+        (row) => row.id !== rowId
+      );
+      await updateCategoryTable(tableId, { tableData: updatedTableData });
+      // Sync data immediately after delete to ensure all components are updated
+      await syncData();
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error("Failed to delete tindak lanjut:", error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      if (editingRow) {
-        // Update existing row
-        await updateTableRow(editingTable!.id, editingRow.id, formData);
-      } else {
-        // Add new row
-        await addTableRow(editingTable!.id);
+      const selectedTable = categoryTables.find(
+        (t) => t.id === formData.selectedCategoryId
+      );
+      if (!selectedTable) {
+        alert("Please select a category");
+        return;
       }
 
+      const newRowData: CategoryTableData = {
+        id: editingRow ? editingRow.rowId : Date.now().toString(),
+        division: formData.division,
+        jumlah: 0,
+        proses: 0,
+        selesai: 0,
+        belumDitindaklanjuti: 0,
+        selesaiBerkelanjutan: 0,
+        progress: 0,
+        status: formData.status,
+        targetPenyelesaian: formData.targetPenyelesaian,
+        detailArahan: formData.detailArahan,
+        checkPoint: formData.checkPoint,
+        deskripsiTindakLanjut: formData.deskripsiTindakLanjut,
+        catatanSekretaris: formData.catatanSekretaris,
+      };
+
+      let updatedTableData: CategoryTableData[];
+      if (editingRow) {
+        // Update existing row
+        updatedTableData = selectedTable.tableData.map((row) =>
+          row.id === editingRow.rowId ? newRowData : row
+        );
+      } else {
+        // Add new row
+        updatedTableData = [...selectedTable.tableData, newRowData];
+      }
+
+      await updateCategoryTable(formData.selectedCategoryId, {
+        tableData: updatedTableData,
+      });
+      // Sync data immediately after update to ensure all components are updated
+      await syncData();
       handleCloseModal();
     } catch (error) {
-      console.error('Failed to save tindak lanjut:', error);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteCategoryTable(id);
-      setDeleteConfirm(null);
-    } catch (error) {
-      console.error('Failed to delete category table:', error);
+      console.error("Failed to save tindak lanjut:", error);
     }
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingTable(null);
     setEditingRow(null);
     setFormData({
-      categoryName: "",
+      selectedCategoryId: "",
       division: "BOD-1",
-      jumlah: 0,
-      proses: 0,
-      selesai: 0,
-      belumDitindaklanjuti: 0,
-      selesaiBerkelanjutan: 0,
-      progress: 0,
       status: "belum_ditindaklanjuti",
       targetPenyelesaian: "",
       detailArahan: "",
@@ -231,558 +206,312 @@ const TindakLanjut: React.FC = () => {
     });
   };
 
+  const handleFormDataChange = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
   // Filter and search logic
   const filteredTables = categoryTables.filter((table) => {
     const matchesCategory =
-      selectedCategory === "all" || (table.categoryName && table.categoryName === selectedCategory);
+      selectedCategory === "all" ||
+      (table.categoryName && table.categoryName === selectedCategory);
     const matchesSearch =
-      (table.categoryName && table.categoryName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (table.description && table.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      (table.categoryName &&
+        table.categoryName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (table.description &&
+        table.description.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
+
+  // Get all tindak lanjut entries from all tables
+  const allTindakLanjut = filteredTables.flatMap((table) =>
+    table.tableData.map((row) => ({
+      ...row,
+      categoryName: table.categoryName,
+      tableId: table.id,
+    }))
+  );
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentTables = filteredTables.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredTables.length / itemsPerPage);
+  const currentTindakLanjut = allTindakLanjut.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+  const totalPages = Math.ceil(allTindakLanjut.length / itemsPerPage);
 
-  const handleInlineEdit = async (
-    tableId: string,
-    rowId: string,
-    field: string,
-    value: string | number
-  ) => {
-    try {
-      await updateTableRow(tableId, rowId, { [field]: value });
-    } catch (error) {
-      console.error('Failed to update inline edit:', error);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
 
-  const startEditing = (
-    tableId: string,
-    rowId: string,
-    field: string,
-    currentValue: string | number
-  ) => {
-    setEditingCell({ tableId, rowId, field });
-    setEditValue(currentValue.toString());
-  };
-
-  const saveEdit = () => {
-    if (editingCell) {
-      const { tableId, rowId, field } = editingCell;
-      const value =
-        field === "jumlah" ||
-        field === "proses" ||
-        field === "selesai" ||
-        field === "belumDitindaklanjuti" ||
-        field === "selesaiBerkelanjutan"
-          ? parseInt(editValue) || 0
-          : editValue;
-
-      handleInlineEdit(tableId, rowId, field, value);
-      setEditingCell(null);
-      setEditValue("");
-    }
-  };
-
-  const cancelEdit = () => {
-    setEditingCell(null);
-    setEditValue("");
-  };
-
-  const handleFormDataChange = (field: string, value: string | number) => {
-    const newFormData = { ...formData, [field]: value };
-    setFormData(newFormData);
-
-    // Auto-save if editing existing row
-    if (editingTable && editingRow) {
-      const updates: Partial<CategoryTableData> = {};
-
-      // Map form fields to table data fields
-      if (field === "division") updates.division = value as string;
-      if (field === "jumlah") updates.jumlah = value as number;
-      if (field === "proses") updates.proses = value as number;
-      if (field === "selesai") updates.selesai = value as number;
-      if (field === "belumDitindaklanjuti")
-        updates.belumDitindaklanjuti = value as number;
-      if (field === "selesaiBerkelanjutan")
-        updates.selesaiBerkelanjutan = value as number;
-      if (field === "status") updates.status = value as string;
-      if (field === "targetPenyelesaian")
-        updates.targetPenyelesaian = value as string;
-      if (field === "detailArahan") updates.detailArahan = value as string;
-      if (field === "checkPoint") updates.checkPoint = value as string;
-      if (field === "deskripsiTindakLanjut")
-        updates.deskripsiTindakLanjut = value as string;
-      if (field === "catatanSekretaris")
-        updates.catatanSekretaris = value as string;
-
-      // Auto-save the changes
-      updateTableRow(editingTable.id, editingRow.id, updates);
-    }
-  };
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-red-600">Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Tindak Lanjut</h2>
-          <p className="text-gray-600 mt-1">
-            Kelola data tabel kategori dan tindak lanjutnya
-          </p>
+          <nav className="flex" aria-label="Breadcrumb">
+            <ol className="inline-flex items-center space-x-1 md:space-x-3">
+              <li className="inline-flex items-center">
+                <span className="text-gray-500">Tindak Lanjut</span>
+              </li>
+              <li>
+                <div className="flex items-center">
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-500">List</span>
+                </div>
+              </li>
+            </ol>
+          </nav>
+          <h1 className="text-3xl font-bold text-gray-900 mt-2">
+            Tindak Lanjut
+          </h1>
         </div>
+        <button
+          onClick={handleAddNew}
+          className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New tindak lanjut</span>
+        </button>
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center space-x-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Q Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Filter className="w-4 h-4 text-gray-500" />
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">Semua Kategori</option>
-            {categoryTables.map((table) => (
-              <option key={table.id} value={table.categoryName || ''}>
-                {table.categoryName || 'Unnamed Category'}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Data Tables */}
-      <div className="space-y-6">
-        {loading ? (
-          <div className="text-center py-8 bg-white rounded-lg shadow-sm">
-            <p className="text-gray-500">Loading data...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8 bg-white rounded-lg shadow-sm">
-            <p className="text-red-500">Error: {error}</p>
-          </div>
-        ) : currentTables.length === 0 ? (
-          <div className="text-center py-8 bg-white rounded-lg shadow-sm">
-            <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Belum ada data tabel yang tersedia</p>
-          </div>
-        ) : (
-          currentTables.map((table) => (
-            <div key={table.id} className="bg-white rounded-lg shadow-sm">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {table.categoryName}
-                  </h3>
-                  <button
-                    onClick={() => handleAddNew(table)}
-                    className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>New tindak lanjut</span>
-                  </button>
-                </div>
-
-                {table.tableData.length === 0 ? (
-                  <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                    <p className="text-gray-500">
-                      Belum ada data dalam tabel ini
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Divisi
-                          </th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Jumlah
-                          </th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Proses
-                          </th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Selesai
-                          </th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Selesai Berkelanjutan
-                          </th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Belum Ditindaklanjuti
-                          </th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Progress
-                          </th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                            Aksi
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {table.tableData.map((row, index) => (
-                          <tr
-                            key={row.id}
-                            className={`border-b border-gray-100 ${
-                              index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                            }`}
-                          >
-                            <td className="py-3 px-4 font-medium text-gray-900">
-                              {row.division}
-                            </td>
-                            <td className="py-3 px-4 text-gray-700">
-                              {editingCell?.tableId === table.id &&
-                              editingCell?.rowId === row.id &&
-                              editingCell?.field === "jumlah" ? (
-                                <div className="flex items-center space-x-1">
-                                  <input
-                                    type="number"
-                                    value={editValue}
-                                    onChange={(e) =>
-                                      setEditValue(e.target.value)
-                                    }
-                                    onBlur={saveEdit}
-                                    onKeyPress={(e) =>
-                                      e.key === "Enter" && saveEdit()
-                                    }
-                                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={saveEdit}
-                                    className="text-green-600 hover:text-green-800"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={cancelEdit}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    startEditing(
-                                      table.id,
-                                      row.id,
-                                      "jumlah",
-                                      row.jumlah
-                                    )
-                                  }
-                                  className="hover:bg-blue-50 px-2 py-1 rounded"
-                                >
-                                  {row.jumlah}
-                                </button>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-gray-700">
-                              {editingCell?.tableId === table.id &&
-                              editingCell?.rowId === row.id &&
-                              editingCell?.field === "proses" ? (
-                                <div className="flex items-center space-x-1">
-                                  <input
-                                    type="number"
-                                    value={editValue}
-                                    onChange={(e) =>
-                                      setEditValue(e.target.value)
-                                    }
-                                    onBlur={saveEdit}
-                                    onKeyPress={(e) =>
-                                      e.key === "Enter" && saveEdit()
-                                    }
-                                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={saveEdit}
-                                    className="text-green-600 hover:text-green-800"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={cancelEdit}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    startEditing(
-                                      table.id,
-                                      row.id,
-                                      "proses",
-                                      row.proses
-                                    )
-                                  }
-                                  className="hover:bg-blue-50 px-2 py-1 rounded"
-                                >
-                                  {row.proses}
-                                </button>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-gray-700">
-                              {editingCell?.tableId === table.id &&
-                              editingCell?.rowId === row.id &&
-                              editingCell?.field === "selesai" ? (
-                                <div className="flex items-center space-x-1">
-                                  <input
-                                    type="number"
-                                    value={editValue}
-                                    onChange={(e) =>
-                                      setEditValue(e.target.value)
-                                    }
-                                    onBlur={saveEdit}
-                                    onKeyPress={(e) =>
-                                      e.key === "Enter" && saveEdit()
-                                    }
-                                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={saveEdit}
-                                    className="text-green-600 hover:text-green-800"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={cancelEdit}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    startEditing(
-                                      table.id,
-                                      row.id,
-                                      "selesai",
-                                      row.selesai
-                                    )
-                                  }
-                                  className="hover:bg-blue-50 px-2 py-1 rounded"
-                                >
-                                  {row.selesai}
-                                </button>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-gray-700">
-                              {editingCell?.tableId === table.id &&
-                              editingCell?.rowId === row.id &&
-                              editingCell?.field === "selesaiBerkelanjutan" ? (
-                                <div className="flex items-center space-x-1">
-                                  <input
-                                    type="number"
-                                    value={editValue}
-                                    onChange={(e) =>
-                                      setEditValue(e.target.value)
-                                    }
-                                    onBlur={saveEdit}
-                                    onKeyPress={(e) =>
-                                      e.key === "Enter" && saveEdit()
-                                    }
-                                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={saveEdit}
-                                    className="text-green-600 hover:text-green-800"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={cancelEdit}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    startEditing(
-                                      table.id,
-                                      row.id,
-                                      "selesaiBerkelanjutan",
-                                      row.selesaiBerkelanjutan
-                                    )
-                                  }
-                                  className="hover:bg-blue-50 px-2 py-1 rounded"
-                                >
-                                  {row.selesaiBerkelanjutan}
-                                </button>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-gray-700">
-                              {editingCell?.tableId === table.id &&
-                              editingCell?.rowId === row.id &&
-                              editingCell?.field === "belumDitindaklanjuti" ? (
-                                <div className="flex items-center space-x-1">
-                                  <input
-                                    type="number"
-                                    value={editValue}
-                                    onChange={(e) =>
-                                      setEditValue(e.target.value)
-                                    }
-                                    onBlur={saveEdit}
-                                    onKeyPress={(e) =>
-                                      e.key === "Enter" && saveEdit()
-                                    }
-                                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
-                                    autoFocus
-                                  />
-                                  <button
-                                    onClick={saveEdit}
-                                    className="text-green-600 hover:text-green-800"
-                                  >
-                                    ✓
-                                  </button>
-                                  <button
-                                    onClick={cancelEdit}
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() =>
-                                    startEditing(
-                                      table.id,
-                                      row.id,
-                                      "belumDitindaklanjuti",
-                                      row.belumDitindaklanjuti
-                                    )
-                                  }
-                                  className="hover:bg-blue-50 px-2 py-1 rounded"
-                                >
-                                  {row.belumDitindaklanjuti}
-                                </button>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getProgressColor(
-                                  row.progress
-                                )}`}
-                              >
-                                {row.progress}%
-                              </span>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex space-x-1">
-                                <button
-                                  onClick={() => handleEdit(table, row)}
-                                  className="p-1 text-blue-600 hover:text-blue-800"
-                                  title="Edit"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => setDeleteConfirm(row.id)}
-                                  className="p-1 text-red-600 hover:text-red-800"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Pagination */}
-      {filteredTables.length > itemsPerPage && (
-        <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-4">
-          <div className="text-sm text-gray-700">
-            Showing {indexOfFirstItem + 1} to{" "}
-            {Math.min(indexOfLastItem, filteredTables.length)} of{" "}
-            {filteredTables.length} results
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center space-x-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
           <div className="flex items-center space-x-2">
-            <select
-              value={itemsPerPage}
-              className="px-2 py-1 border border-gray-300 rounded text-sm"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-            <span className="text-sm text-gray-700">Per page</span>
-            <div className="flex space-x-1">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <span className="text-sm text-gray-500">0</span>
+          </div>
+          <button className="p-2 text-gray-500 hover:text-gray-700">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                  <div className="flex items-center space-x-1">
+                    <span>Kategori Arahan</span>
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Detail Arahan
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  PIC
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Target
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Deskripsi Tindak Lanjut
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {currentTindakLanjut.map((row) => (
+                <tr
+                  key={`${row.tableId}-${row.id}`}
+                  className="hover:bg-gray-50"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {row.categoryName}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    {row.detailArahan || "Tidak ada detail"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {row.division}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {row.targetPenyelesaian
+                      ? new Date(row.targetPenyelesaian).toLocaleDateString(
+                          "en-GB",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )
+                      : "Tidak ada target"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(row.status || "belum_ditindaklanjuti")}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEdit(row.tableId, row.id, row)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          setDeleteConfirm(`${row.tableId}-${row.id}`)
+                        }
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
               >
                 Previous
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 border rounded text-sm ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "border-gray-300 text-gray-700"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
               <button
                 onClick={() =>
                   setCurrentPage(Math.min(totalPages, currentPage + 1))
                 }
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
               >
                 Next
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing{" "}
+                  <span className="font-medium">{indexOfFirstItem + 1}</span> to{" "}
+                  <span className="font-medium">
+                    {Math.min(indexOfLastItem, allTindakLanjut.length)}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-medium">{allTindakLanjut.length}</span>{" "}
+                  results
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          currentPage === page
+                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Konfirmasi Hapus
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Apakah Anda yakin ingin menghapus tindak lanjut ini?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  const [tableId, rowId] = deleteConfirm.split("-");
+                  handleDelete(tableId, rowId);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Hapus
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Form */}
+      {/* Create/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingRow ? "Edit Tindak Lanjut" : "Create Tindak Lanjut"}
-              </h3>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingRow ? "Edit Tindak Lanjut" : "Create Tindak Lanjut"}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">Detail Utama</p>
+              </div>
               <button
                 onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600"
@@ -792,78 +521,79 @@ const TindakLanjut: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <h4 className="text-md font-medium text-gray-900">
-                  Detail Utama
-                </h4>
+              {/* Category Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Kategori Arahan *
+                </label>
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={formData.selectedCategoryId}
+                    onChange={(e) =>
+                      handleFormDataChange("selectedCategoryId", e.target.value)
+                    }
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select an option</option>
+                    {categoryTables.map((table) => (
+                      <option key={table.id} value={table.id}>
+                        {table.categoryName}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="p-2 text-gray-400 hover:text-gray-600 border border-gray-300 rounded-lg"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kategori Arahan *
-                    </label>
-                    <div className="flex space-x-2">
-                      <select
-                        value={formData.categoryName}
-                        disabled
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-                      >
-                        <option value={formData.categoryName}>
-                          {formData.categoryName}
-                        </option>
-                      </select>
-                      <button
-                        type="button"
-                        className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
+              {/* Detail Arahan */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Detail Arahan *
+                </label>
+                <textarea
+                  value={formData.detailArahan}
+                  onChange={(e) =>
+                    handleFormDataChange("detailArahan", e.target.value)
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  required
+                />
+              </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      PIC (Person in Charge) *
-                    </label>
-                    <select
-                      value={formData.division}
-                      onChange={(e) =>
-                        handleFormDataChange("division", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    >
-                      {divisions.map((division) => (
-                        <option key={division} value={division}>
-                          {division}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              {/* PIC and Target */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PIC (Person in Charge) *
+                  </label>
+                  <select
+                    value={formData.division}
+                    onChange={(e) =>
+                      handleFormDataChange("division", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    {divisions.map((division) => (
+                      <option key={division} value={division}>
+                        {division}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Detail Arahan *
+                    Target Penyelesaian *
                   </label>
-                  <textarea
-                    rows={3}
-                    value={formData.detailArahan}
-                    onChange={(e) =>
-                      handleFormDataChange("detailArahan", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan detail arahan..."
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Target Penyelesaian *
-                    </label>
+                  <div className="relative">
                     <input
                       type="date"
                       value={formData.targetPenyelesaian}
@@ -876,128 +606,108 @@ const TindakLanjut: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
+                    <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status *
-                    </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) =>
-                        handleFormDataChange("status", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    >
-                      <option value="belum_ditindaklanjuti">
-                        Belum Ditindaklanjuti
-                      </option>
-                      <option value="dalam_proses">Dalam Proses</option>
-                      <option value="selesai">Selesai</option>
-                      <option value="selesai_berkelanjutan">
-                        Selesai Berkelanjutan
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Check Point
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.checkPoint}
-                    onChange={(e) =>
-                      handleFormDataChange("checkPoint", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan check point..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Deskripsi Tindak Lanjut
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={formData.deskripsiTindakLanjut}
-                    onChange={(e) =>
-                      handleFormDataChange(
-                        "deskripsiTindakLanjut",
-                        e.target.value
-                      )
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan deskripsi tindak lanjut..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Catatan Sekretaris & Komite Dekom
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={formData.catatanSekretaris}
-                    onChange={(e) =>
-                      handleFormDataChange("catatanSekretaris", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan catatan..."
-                  />
                 </div>
               </div>
 
-              <div className="flex space-x-3 pt-4">
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status *
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    handleFormDataChange("status", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="belum_ditindaklanjuti">
+                    Belum Ditindaklanjuti
+                  </option>
+                  <option value="dalam_proses">Dalam Proses</option>
+                  <option value="selesai">Selesai</option>
+                  <option value="selesai_berkelanjutan">
+                    Selesai Berkelanjutan
+                  </option>
+                </select>
+              </div>
+
+              {/* Check Point */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Check Point
+                </label>
+                <input
+                  type="text"
+                  value={formData.checkPoint}
+                  onChange={(e) =>
+                    handleFormDataChange("checkPoint", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Deskripsi Tindak Lanjut */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Deskripsi Tindak Lanjut
+                </label>
+                <textarea
+                  value={formData.deskripsiTindakLanjut}
+                  onChange={(e) =>
+                    handleFormDataChange(
+                      "deskripsiTindakLanjut",
+                      e.target.value
+                    )
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Catatan Sekretaris & Komite Dekom */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Catatan Sekretaris & Komite Dekom
+                </label>
+                <textarea
+                  value={formData.catatanSekretaris}
+                  onChange={(e) =>
+                    handleFormDataChange("catatanSekretaris", e.target.value)
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-3 pt-6 border-t">
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  {editingRow ? "Update" : "Create"}
+                </button>
+                {!editingRow && (
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    Create & create another
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
                 >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  {editingRow ? "Simpan" : "Create"}
+                  Cancel
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-sm">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Hapus Data
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak
-                dapat dibatalkan.
-              </p>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

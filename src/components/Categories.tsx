@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
+import { useRealTimeSync } from "../hooks/useRealTimeSync";
 import {
   Plus,
   Edit,
@@ -24,6 +25,7 @@ const Categories: React.FC = () => {
     loading,
     error,
   } = useData();
+  const { syncData } = useRealTimeSync();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<CategoryTable | null>(null);
@@ -104,9 +106,11 @@ const Categories: React.FC = () => {
         await addCategoryTable(formData);
       }
 
+      // Sync data immediately after save to ensure all components are updated
+      await syncData();
       handleCloseModal();
     } catch (error) {
-      console.error('Failed to save category:', error);
+      console.error("Failed to save category:", error);
       // You might want to show an error message to the user
     }
   };
@@ -124,9 +128,11 @@ const Categories: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await deleteCategoryTable(id);
+      // Sync data immediately after delete to ensure all components are updated
+      await syncData();
       setDeleteConfirm(null);
     } catch (error) {
-      console.error('Failed to delete category:', error);
+      console.error("Failed to delete category:", error);
       // You might want to show an error message to the user
     }
   };
@@ -145,7 +151,8 @@ const Categories: React.FC = () => {
     selectedCategory === "all"
       ? categoryTables
       : categoryTables.filter(
-          (table) => table.categoryName && table.categoryName === selectedCategory
+          (table) =>
+            table.categoryName && table.categoryName === selectedCategory
         );
 
   return (
@@ -168,8 +175,8 @@ const Categories: React.FC = () => {
             >
               <option value="all">Semua Kategori</option>
               {categoryTables.map((table) => (
-                <option key={table.id} value={table.categoryName || ''}>
-                  {table.categoryName || 'Unnamed Category'}
+                <option key={table.id} value={table.categoryName || ""}>
+                  {table.categoryName || "Unnamed Category"}
                 </option>
               ))}
             </select>
