@@ -5,13 +5,14 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { Arahan, Category, CategoryTable } from "../types";
+import { Arahan, Category, CategoryTable, TindakLanjut } from "../types";
 import * as apiService from "../services/apiService";
 
 interface DataContextType {
   arahan: Arahan[];
   categories: Category[];
   categoryTables: CategoryTable[];
+  tindakLanjut: TindakLanjut[];
   loading: boolean;
   error: string | null;
   addArahan: (
@@ -32,6 +33,10 @@ interface DataContextType {
     categoryTable: Partial<CategoryTable>
   ) => Promise<void>;
   deleteCategoryTable: (id: string) => Promise<void>;
+  getTindakLanjut: () => Promise<void>;
+  addTindakLanjut: (tindakLanjut: Omit<TindakLanjut, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  updateTindakLanjut: (id: string, tindakLanjut: Partial<TindakLanjut>) => Promise<void>;
+  deleteTindakLanjut: (id: string) => Promise<void>;
   getArahanByDivision: (division: string) => Arahan[];
   getCategoriesByDivision: (division: string) => Category[];
   refreshData: () => Promise<void>;
@@ -55,6 +60,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [arahan, setArahan] = useState<Arahan[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryTables, setCategoryTables] = useState<CategoryTable[]>([]);
+  const [tindakLanjut, setTindakLanjut] = useState<TindakLanjut[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +80,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       // Load categories
       const categoriesData = await apiService.getCategories();
       setCategories(categoriesData);
+
+      // Load tindak lanjut
+      const tindakLanjutData = await apiService.getTindakLanjut();
+      setTindakLanjut(tindakLanjutData);
 
       // Load category tables with their associated table data
       const categoryTablesData = await Promise.all(
@@ -324,10 +334,61 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     return categories;
   };
 
+  const getTindakLanjut = async () => {
+    try {
+      const tindakLanjutData = await apiService.getTindakLanjut();
+      setTindakLanjut(tindakLanjutData);
+    } catch (err) {
+      console.error("Failed to get tindak lanjut:", err);
+      throw err;
+    }
+  };
+
+  const addTindakLanjut = async (newTindakLanjut: Omit<TindakLanjut, "id" | "createdAt" | "updatedAt">) => {
+    try {
+      const createdTindakLanjut = await apiService.createTindakLanjut(newTindakLanjut);
+      setTindakLanjut((prev) => [...prev, createdTindakLanjut]);
+    } catch (err) {
+      console.error("Failed to add tindak lanjut:", err);
+      throw err;
+    }
+  };
+
+  const updateTindakLanjut = async (id: string, updates: Partial<TindakLanjut>) => {
+    try {
+      await apiService.updateTindakLanjut(id, updates);
+      setTindakLanjut((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                ...updates,
+                updatedAt: new Date().toISOString().split("T")[0],
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      console.error("Failed to update tindak lanjut:", err);
+      throw err;
+    }
+  };
+
+  const deleteTindakLanjut = async (id: string) => {
+    try {
+      await apiService.deleteTindakLanjut(id);
+      setTindakLanjut((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      console.error("Failed to delete tindak lanjut:", err);
+      throw err;
+    }
+  };
+
   const value = {
     arahan,
     categories,
     categoryTables,
+    tindakLanjut,
     loading,
     error,
     addArahan,
@@ -339,6 +400,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     addCategoryTable,
     updateCategoryTable,
     deleteCategoryTable,
+    getTindakLanjut,
+    addTindakLanjut,
+    updateTindakLanjut,
+    deleteTindakLanjut,
     getArahanByDivision,
     getCategoriesByDivision,
     refreshData,

@@ -18,30 +18,26 @@ import {
   Upload,
   Download,
   Paperclip,
+  ClipboardList,
 } from "lucide-react";
-import { CategoryTable, CategoryTableData } from "../types";
-import { uploadFiles, deleteFile, getFileUrl } from "../services/apiService";
+import { TindakLanjut } from "../types";
+import { uploadFiles, deleteFile, getFileUrl, testTindakLanjutTable, testServerStatus } from "../services/apiService";
 
 const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
 
-const TindakLanjut: React.FC = () => {
+const TindakLanjutComponent: React.FC = () => {
   const { user } = useAuth();
-  const { categoryTables, updateCategoryTable, loading, error } = useData();
+  const { tindakLanjut, addTindakLanjut, updateTindakLanjut, deleteTindakLanjut, categories, loading, error } = useData();
   const { syncData } = useRealTimeSync();
   const [searchParams] = useSearchParams();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [divisionFilter, setDivisionFilter] = useState<string>("");
-  const [editingRow, setEditingRow] = useState<{
-    tableId: string;
-    rowId: string;
-    data: CategoryTableData;
-  } | null>(null);
+  const [editingRow, setEditingRow] = useState<TindakLanjut | null>(null);
 
   // Read division filter from URL parameters
   useEffect(() => {
@@ -52,15 +48,46 @@ const TindakLanjut: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Debug categories loading
+  useEffect(() => {
+    console.log("Categories loaded:", categories);
+  }, [categories]);
+
+  const testDatabaseConnection = async () => {
+    try {
+      console.log("Testing database connection...");
+      const result = await testTindakLanjutTable();
+      console.log("Database test result:", result);
+      alert(`Database test: ${result.message}\nRecord count: ${result.recordCount}`);
+    } catch (error) {
+      console.error("Database test failed:", error);
+      alert(`Database test failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  const testServerStatusLocal = async () => {
+    try {
+      console.log("Testing server status...");
+      const result = await testServerStatus();
+      console.log("Server status result:", result);
+      alert(`Server status: ${result.message}\nDatabase: ${result.database}`);
+    } catch (error) {
+      console.error("Server status test failed:", error);
+      alert(`Server status test failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
   const [formData, setFormData] = useState({
-    selectedCategoryId: "",
-    division: "BOD-1",
-    status: "belum_ditindaklanjuti",
-    targetPenyelesaian: "",
+    kategoriArahan: "",
     detailArahan: "",
-    checkPoint: "",
+    pic: "BOD-1",
+    target: "",
+    status: "belum_ditindaklanjuti" as "belum_ditindaklanjuti" | "dalam_proses" | "selesai" | "selesai_berkelanjutan",
     deskripsiTindakLanjut: "",
     catatanSekretaris: "",
+    categoryId: "",
+    division: "BOD-1",
+    fileAttachment: "",
   });
 
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
@@ -103,51 +130,67 @@ const TindakLanjut: React.FC = () => {
     }
   };
 
-  const calculateProgress = (data: Partial<CategoryTableData>) => {
-    const total = data.jumlah || 0;
-    const completed = (data.selesai || 0) + (data.selesaiBerkelanjutan || 0);
-    return total > 0 ? Math.round((completed / total) * 100) : 0;
-  };
-
   const handleAddNew = () => {
     setFormData({
-      selectedCategoryId: "",
-      division: "BOD-1",
-      status: "belum_ditindaklanjuti",
-      targetPenyelesaian: "",
+      kategoriArahan: "",
       detailArahan: "",
-      checkPoint: "",
+      pic: "BOD-1",
+      target: "",
+      status: "belum_ditindaklanjuti" as "belum_ditindaklanjuti" | "dalam_proses" | "selesai" | "selesai_berkelanjutan",
       deskripsiTindakLanjut: "",
       catatanSekretaris: "",
+      categoryId: "",
+      division: "BOD-1",
+      fileAttachment: "",
     });
     setEditingRow(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (
-    tableId: string,
-    rowId: string,
-    data: CategoryTableData
-  ) => {
-    setEditingRow({ tableId, rowId, data });
+  const handleEdit = (tindakLanjut: TindakLanjut) => {
+    console.log("Editing tindak lanjut:", tindakLanjut);
+    console.log("Available categories:", categories);
+    console.log("Tindak lanjut kategoriArahan:", tindakLanjut.kategoriArahan);
+    console.log("Available category names:", categories.map(cat => cat.categoryName));
+    
+    setEditingRow(tindakLanjut);
+    
+    // Find the categoryId based on kategoriArahan
+    const matchingCategory = categories.find(cat => cat.categoryName === tindakLanjut.kategoriArahan);
+    const categoryId = matchingCategory?.id || tindakLanjut.categoryId || "";
+    
+    console.log("Matching category:", matchingCategory);
+    console.log("Selected categoryId:", categoryId);
+    
+    // Format target date for input field (YYYY-MM-DD)
+    let targetDate = "";
+    if (tindakLanjut.target) {
+      try {
+        const date = new Date(tindakLanjut.target);
+        targetDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      } catch (error) {
+        console.error("Error formatting target date:", error);
+        targetDate = "";
+      }
+    }
+    
     setFormData({
-      selectedCategoryId: tableId,
-      division: data.division,
-      status: data.status || "belum_ditindaklanjuti",
-      targetPenyelesaian: data.targetPenyelesaian || "",
-      detailArahan: data.detailArahan || "",
-      checkPoint: data.checkPoint || "",
-      deskripsiTindakLanjut: data.deskripsiTindakLanjut || "",
-      catatanSekretaris: data.catatanSekretaris || "",
+      kategoriArahan: tindakLanjut.kategoriArahan,
+      detailArahan: tindakLanjut.detailArahan,
+      pic: tindakLanjut.pic,
+      target: targetDate,
+      status: tindakLanjut.status,
+      deskripsiTindakLanjut: tindakLanjut.deskripsiTindakLanjut,
+      catatanSekretaris: tindakLanjut.catatanSekretaris,
+      categoryId: categoryId,
+      division: tindakLanjut.division,
+      fileAttachment: tindakLanjut.fileAttachment || "",
     });
 
     // Load existing files
     try {
-      if (data.uploadedFiles) {
-        setUploadedFiles(JSON.parse(data.uploadedFiles));
-      }
-      if (data.fileNames) {
-        setFileNames(JSON.parse(data.fileNames));
+      if (tindakLanjut.fileAttachment) {
+        setUploadedFiles(JSON.parse(tindakLanjut.fileAttachment));
       }
     } catch (error) {
       console.error("Failed to parse file data:", error);
@@ -158,15 +201,9 @@ const TindakLanjut: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (tableId: string, rowId: string) => {
+  const handleDelete = async (id: string) => {
     try {
-      const table = categoryTables.find((t) => t.id === tableId);
-      if (!table) return;
-
-      const updatedTableData = table.tableData.filter(
-        (row) => row.id !== rowId
-      );
-      await updateCategoryTable(tableId, { tableData: updatedTableData });
+      await deleteTindakLanjut(id);
       // Sync data immediately after delete to ensure all components are updated
       await syncData();
       setDeleteConfirm(null);
@@ -178,53 +215,72 @@ const TindakLanjut: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    try {
-      const selectedTable = categoryTables.find(
-        (t) => t.id === formData.selectedCategoryId
-      );
-      if (!selectedTable) {
-        alert("Please select a category");
+    console.log("Submitting form data:", formData);
+
+    // Validate required fields
+    if (!formData.categoryId) {
+      alert("Please select a category");
+      return;
+    }
+
+    if (!formData.detailArahan.trim()) {
+      alert("Please enter detail arahan");
+      return;
+    }
+
+    // Validate target date format
+    let targetDate = "";
+    if (formData.target) {
+      try {
+        const date = new Date(formData.target);
+        if (isNaN(date.getTime())) {
+          alert("Invalid target date format");
+          return;
+        }
+        // Send date as YYYY-MM-DD format instead of ISO string
+        targetDate = date.toISOString().split('T')[0];
+      } catch (error) {
+        console.error("Error formatting target date:", error);
+        alert("Invalid target date");
         return;
       }
+    }
 
-      const newRowData: CategoryTableData = {
-        id: editingRow ? editingRow.rowId : Date.now().toString(),
-        division: formData.division,
-        jumlah: 0,
-        proses: 0,
-        selesai: 0,
-        belumDitindaklanjuti: 0,
-        selesaiBerkelanjutan: 0,
-        progress: 0,
-        status: formData.status,
-        targetPenyelesaian: formData.targetPenyelesaian,
+    try {
+      const newTindakLanjut = {
+        kategoriArahan: formData.kategoriArahan,
         detailArahan: formData.detailArahan,
-        checkPoint: formData.checkPoint,
+        pic: formData.pic,
+        target: targetDate,
+        status: formData.status,
         deskripsiTindakLanjut: formData.deskripsiTindakLanjut,
         catatanSekretaris: formData.catatanSekretaris,
-        uploadedFiles: JSON.stringify(uploadedFiles),
-        fileNames: JSON.stringify(fileNames),
+        categoryId: formData.categoryId,
+        division: formData.division,
+        fileAttachment: JSON.stringify(uploadedFiles),
       };
 
-      let updatedTableData: CategoryTableData[];
+      console.log("Saving tindak lanjut:", newTindakLanjut);
+      console.log("Form data:", formData);
+      console.log("Editing row ID:", editingRow?.id);
+      console.log("Target date:", targetDate);
+
       if (editingRow) {
         // Update existing row
-        updatedTableData = selectedTable.tableData.map((row) =>
-          row.id === editingRow.rowId ? newRowData : row
-        );
+        console.log("Updating tindak lanjut with ID:", editingRow.id);
+        await updateTindakLanjut(editingRow.id, newTindakLanjut);
       } else {
         // Add new row
-        updatedTableData = [...selectedTable.tableData, newRowData];
+        console.log("Creating new tindak lanjut");
+        await addTindakLanjut(newTindakLanjut);
       }
-
-      await updateCategoryTable(formData.selectedCategoryId, {
-        tableData: updatedTableData,
-      });
       // Sync data immediately after update to ensure all components are updated
       await syncData();
       handleCloseModal();
     } catch (error) {
       console.error("Failed to save tindak lanjut:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      alert(`Failed to save tindak lanjut: ${errorMessage}`);
     }
   };
 
@@ -232,14 +288,16 @@ const TindakLanjut: React.FC = () => {
     setIsModalOpen(false);
     setEditingRow(null);
     setFormData({
-      selectedCategoryId: "",
-      division: "BOD-1",
-      status: "belum_ditindaklanjuti",
-      targetPenyelesaian: "",
+      kategoriArahan: "",
       detailArahan: "",
-      checkPoint: "",
+      pic: "BOD-1",
+      target: "",
+      status: "belum_ditindaklanjuti" as "belum_ditindaklanjuti" | "dalam_proses" | "selesai" | "selesai_berkelanjutan",
       deskripsiTindakLanjut: "",
       catatanSekretaris: "",
+      categoryId: "",
+      division: "BOD-1",
+      fileAttachment: "",
     });
     setUploadedFiles([]);
     setFileNames([]);
@@ -293,31 +351,14 @@ const TindakLanjut: React.FC = () => {
   };
 
   // Filter and search logic
-  const filteredTables = categoryTables.filter((table) => {
-    const matchesCategory =
-      selectedCategory === "all" ||
-      (table.categoryName && table.categoryName === selectedCategory);
+  const filteredTindakLanjut = tindakLanjut.filter((t) => {
     const matchesSearch =
-      (table.categoryName &&
-        table.categoryName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (table.description &&
-        table.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesCategory && matchesSearch;
+      (t.kategoriArahan &&
+        t.kategoriArahan.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (t.detailArahan &&
+        t.detailArahan.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesSearch;
   });
-
-  // Get all tindak lanjut entries from all tables
-  const allTindakLanjut = filteredTables.flatMap((table) =>
-    table.tableData.map((row) => ({
-      ...row,
-      categoryName: table.categoryName,
-      tableId: table.id,
-    }))
-  );
-
-  // Apply division filter if specified
-  const filteredTindakLanjut = divisionFilter
-    ? allTindakLanjut.filter((row) => row.division === divisionFilter)
-    : allTindakLanjut;
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -345,11 +386,11 @@ const TindakLanjut: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <nav className="flex" aria-label="Breadcrumb">
+          <nav className="flex mb-2" aria-label="Breadcrumb">
             <ol className="inline-flex items-center space-x-1 md:space-x-3">
               <li className="inline-flex items-center">
                 <span className="text-gray-500">Tindak Lanjut</span>
@@ -362,7 +403,7 @@ const TindakLanjut: React.FC = () => {
               </li>
             </ol>
           </nav>
-          <h1 className="text-3xl font-bold text-gray-900 mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Tindak Lanjut
             {divisionFilter && (
               <span className="text-lg font-normal text-orange-600 ml-2">
@@ -379,46 +420,63 @@ const TindakLanjut: React.FC = () => {
                 setSearchTerm("");
                 setCurrentPage(1);
               }}
-              className="flex items-center space-x-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+              className="flex items-center space-x-2 bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm"
             >
               <X className="w-4 h-4" />
               <span>Clear Filter</span>
             </button>
           )}
+          {/* <button
+            onClick={testDatabaseConnection}
+            className="flex items-center space-x-2 bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          >
+            <span>Test DB</span>
+          </button>
+          <button
+            onClick={testServerStatusLocal}
+            className="flex items-center space-x-2 bg-purple-500 text-white px-3 py-2 rounded-lg hover:bg-purple-600 transition-colors text-sm"
+          >
+            <span>Test Server</span>
+          </button> */}
           <button
             onClick={handleAddNew}
             className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>New tindak lanjut</span>
+            <span className="hidden sm:inline">New tindak lanjut</span>
+            <span className="sm:hidden">New</span>
           </button>
         </div>
       </div>
 
       {/* Search and Filter */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center space-x-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search tindak lanjut..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <span className="text-sm text-gray-500">
-              {filteredTindakLanjut.length} results
-            </span>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-500">
+                {filteredTindakLanjut.length} results
+              </span>
+            </div>
+            <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+              </svg>
+            </button>
           </div>
-          <button className="p-2 text-gray-500 hover:text-gray-700">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -428,7 +486,7 @@ const TindakLanjut: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-48">
                   <div className="flex items-center space-x-1">
                     <span>Kategori Arahan</span>
                     <svg
@@ -444,113 +502,149 @@ const TindakLanjut: React.FC = () => {
                     </svg>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                   Detail Arahan
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                   PIC
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                   Target
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
                   Deskripsi Tindak Lanjut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                   Files
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {currentTindakLanjut.map((row) => (
-                <tr
-                  key={`${row.tableId}-${row.id}`}
-                  className="hover:bg-gray-50"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {row.categoryName}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                    {row.detailArahan || "Tidak ada detail"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.division}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.targetPenyelesaian
-                      ? new Date(row.targetPenyelesaian).toLocaleDateString(
-                          "en-GB",
-                          {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          }
-                        )
-                      : "Tidak ada target"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(row.status || "belum_ditindaklanjuti")}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                    {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {row.uploadedFiles && row.uploadedFiles !== "[]" ? (
-                      <div className="flex items-center space-x-1">
-                        <Paperclip className="w-4 h-4 text-gray-500" />
-                        <span className="text-xs text-gray-600">
-                          {(() => {
-                            try {
-                              const files = JSON.parse(row.uploadedFiles);
-                              return `${files.length} file(s)`;
-                            } catch {
-                              return "0 file(s)";
-                            }
-                          })()}
-                        </span>
+              {currentTindakLanjut.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 sm:px-6 py-12 text-center">
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <ClipboardList className="w-6 h-6 text-gray-400" />
                       </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">No files</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(row.tableId, row.id, row)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          setDeleteConfirm(`${row.tableId}-${row.id}`)
-                        }
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">No tindak lanjut found</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {searchTerm 
+                            ? `No results found for "${searchTerm}"`
+                            : "Get started by creating a new tindak lanjut"
+                          }
+                        </p>
+                      </div>
+                      {!searchTerm && (
+                        <button
+                          onClick={handleAddNew}
+                          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create first tindak lanjut
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                currentTindakLanjut.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {row.kategoriArahan}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
+                      <div className="max-w-xs">
+                        {row.detailArahan || "Tidak ada detail"}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {row.pic}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {row.target
+                        ? new Date(row.target).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )
+                        : "Tidak ada target"}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(row.status || "belum_ditindaklanjuti")}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
+                      <div className="max-w-xs">
+                        {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {row.fileAttachment && row.fileAttachment !== "[]" ? (
+                        <div className="flex items-center space-x-1">
+                          <Paperclip className="w-4 h-4 text-gray-500" />
+                          <span className="text-xs text-gray-600">
+                            {(() => {
+                              try {
+                                const files = JSON.parse(row.fileAttachment);
+                                return `${files.length} file(s)`;
+                              } catch {
+                                return "0 file(s)";
+                              }
+                            })()}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">No files</span>
+                      )}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(row)}
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setDeleteConfirm(row.id)
+                          }
+                          className="text-red-600 hover:text-red-900 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="bg-white px-4 sm:px-6 py-4 flex items-center justify-between border-t border-gray-200">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Previous
               </button>
@@ -559,7 +653,7 @@ const TindakLanjut: React.FC = () => {
                   setCurrentPage(Math.min(totalPages, currentPage + 1))
                 }
                 disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                className="ml-3 relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next
               </button>
@@ -570,10 +664,10 @@ const TindakLanjut: React.FC = () => {
                   Showing{" "}
                   <span className="font-medium">{indexOfFirstItem + 1}</span> to{" "}
                   <span className="font-medium">
-                    {Math.min(indexOfLastItem, allTindakLanjut.length)}
+                    {Math.min(indexOfLastItem, filteredTindakLanjut.length)}
                   </span>{" "}
                   of{" "}
-                  <span className="font-medium">{allTindakLanjut.length}</span>{" "}
+                  <span className="font-medium">{filteredTindakLanjut.length}</span>{" "}
                   results
                 </p>
               </div>
@@ -584,7 +678,7 @@ const TindakLanjut: React.FC = () => {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        className={`relative inline-flex items-center px-3 py-2 border text-sm font-medium transition-colors ${
                           currentPage === page
                             ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
                             : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
@@ -620,8 +714,7 @@ const TindakLanjut: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  const [tableId, rowId] = deleteConfirm.split("-");
-                  handleDelete(tableId, rowId);
+                  handleDelete(deleteConfirm);
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
@@ -659,23 +752,29 @@ const TindakLanjut: React.FC = () => {
                 </label>
                 <div className="flex items-center space-x-2">
                   <select
-                    value={formData.selectedCategoryId}
-                    onChange={(e) =>
-                      handleFormDataChange("selectedCategoryId", e.target.value)
-                    }
+                    value={formData.categoryId}
+                    onChange={(e) => {
+                      const selectedCategory = categories.find(cat => cat.id === e.target.value);
+                      handleFormDataChange("categoryId", e.target.value);
+                      handleFormDataChange("kategoriArahan", selectedCategory?.categoryName || "");
+                    }}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
+                    disabled={loading}
                   >
-                    <option value="">Select an option</option>
-                    {categoryTables.map((table) => (
-                      <option key={table.id} value={table.id}>
-                        {table.categoryName}
+                    <option value="">
+                      {loading ? "Loading categories..." : "Select an option"}
+                    </option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.categoryName}
                       </option>
                     ))}
                   </select>
                   <button
                     type="button"
                     className="p-2 text-gray-400 hover:text-gray-600 border border-gray-300 rounded-lg"
+                    disabled={loading}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -705,9 +804,9 @@ const TindakLanjut: React.FC = () => {
                     PIC (Person in Charge) *
                   </label>
                   <select
-                    value={formData.division}
+                    value={formData.pic}
                     onChange={(e) =>
-                      handleFormDataChange("division", e.target.value)
+                      handleFormDataChange("pic", e.target.value)
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
@@ -727,10 +826,10 @@ const TindakLanjut: React.FC = () => {
                   <div className="relative">
                     <input
                       type="date"
-                      value={formData.targetPenyelesaian}
+                      value={formData.target}
                       onChange={(e) =>
                         handleFormDataChange(
-                          "targetPenyelesaian",
+                          "target",
                           e.target.value
                         )
                       }
@@ -764,21 +863,6 @@ const TindakLanjut: React.FC = () => {
                     Selesai Berkelanjutan
                   </option>
                 </select>
-              </div>
-
-              {/* Check Point */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Check Point
-                </label>
-                <input
-                  type="text"
-                  value={formData.checkPoint}
-                  onChange={(e) =>
-                    handleFormDataChange("checkPoint", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
               </div>
 
               {/* Deskripsi Tindak Lanjut */}
@@ -925,4 +1009,4 @@ const TindakLanjut: React.FC = () => {
   );
 };
 
-export default TindakLanjut;
+export default TindakLanjutComponent;

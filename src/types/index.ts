@@ -66,3 +66,19 @@ export interface DashboardStats {
   selesaiBerkelanjutan: number;
   dalamProses: number;
 }
+
+export interface TindakLanjut {
+  id: string;
+  kategoriArahan: string;
+  detailArahan: string;
+  pic: string;
+  target: string;
+  status: "belum_ditindaklanjuti" | "dalam_proses" | "selesai" | "selesai_berkelanjutan";
+  deskripsiTindakLanjut: string;
+  catatanSekretaris: string;
+  categoryId: string;
+  division: string;
+  fileAttachment?: string;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -76,6 +76,16 @@ const dbConfig = {
 // Create connection pool
 const pool = mysql.createPool(dbConfig);
 
+// Test database connection on startup
+pool.getConnection()
+  .then(connection => {
+    console.log("✅ Database connected successfully");
+    connection.release();
+  })
+  .catch(error => {
+    console.error("❌ Database connection failed:", error);
+  });
+
 // Test database connection
 app.get("/api/test-connection", async (req, res) => {
   try {
@@ -423,6 +433,7 @@ app.get("/api/category-table-data/:categoryId", async (req, res) => {
       "SELECT * FROM category_table_data WHERE categoryId = ?",
       [categoryId]
     );
+    
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error("Failed to get category table data:", error);
@@ -681,6 +692,272 @@ app.get("/api/arahans", async (req, res) => {
   }
 });
 
+// Tindak Lanjut API
+app.get("/api/tindak-lanjut", async (req, res) => {
+  try {
+    // First check if table exists
+    const [tables] = await pool.execute("SHOW TABLES LIKE 'tindak_lanjut'");
+    
+    if (tables.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "Table tindak_lanjut does not exist. Please create the table first.",
+        error: "Table not found"
+      });
+    }
+    
+    const [rows] = await pool.execute("SELECT * FROM tindak_lanjut");
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error("Failed to get tindak lanjut:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get tindak lanjut",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/api/tindak-lanjut/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.execute("SELECT * FROM tindak_lanjut WHERE id = ?", [id]);
+    
+    if (rows.length > 0) {
+      res.json({ success: true, data: rows[0] });
+    } else {
+      res.status(404).json({ success: false, message: "Tindak lanjut not found" });
+    }
+  } catch (error) {
+    console.error("Failed to get tindak lanjut:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get tindak lanjut",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/tindak-lanjut", async (req, res) => {
+  try {
+    const {
+      kategoriArahan,
+      detailArahan,
+      pic,
+      target,
+      status,
+      deskripsiTindakLanjut,
+      catatanSekretaris,
+      categoryId,
+      division,
+      fileAttachment
+    } = req.body;
+
+    // Generate UUID for id
+    const id = `tl-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Format target date for MySQL (YYYY-MM-DD)
+    let formattedTarget = null;
+    if (target) {
+      try {
+        const date = new Date(target);
+        if (!isNaN(date.getTime())) {
+          formattedTarget = date.toISOString().split('T')[0]; // Convert to YYYY-MM-DD
+        }
+      } catch (error) {
+        console.error("Error formatting target date:", error);
+      }
+    }
+
+    const [result] = await pool.execute(
+      "INSERT INTO tindak_lanjut (id, kategoriArahan, detailArahan, pic, target, status, deskripsiTindakLanjut, catatanSekretaris, categoryId, division, fileAttachment, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+      [
+        id,
+        kategoriArahan,
+        detailArahan,
+        pic,
+        formattedTarget,
+        status,
+        deskripsiTindakLanjut,
+        catatanSekretaris,
+        categoryId,
+        division,
+        fileAttachment || null,
+      ]
+    );
+
+    const newTindakLanjut = {
+      id: id,
+      kategoriArahan,
+      detailArahan,
+      pic,
+      target: formattedTarget,
+      status,
+      deskripsiTindakLanjut,
+      catatanSekretaris,
+      categoryId,
+      division,
+      fileAttachment,
+      createdAt: new Date().toISOString().split("T")[0],
+      updatedAt: new Date().toISOString().split("T")[0],
+    };
+
+    res.json({ success: true, data: newTindakLanjut });
+  } catch (error) {
+    console.error("Failed to create tindak lanjut:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create tindak lanjut",
+      error: error.message,
+    });
+  }
+});
+
+app.put("/api/tindak-lanjut/:id", async (req, res) => {
+  try {
+    // Test database connection first
+    const connection = await pool.getConnection();
+    connection.release();
+    
+    const { id } = req.params;
+    const {
+      kategoriArahan,
+      detailArahan,
+      pic,
+      target,
+      status,
+      deskripsiTindakLanjut,
+      catatanSekretaris,
+      categoryId,
+      division,
+      fileAttachment
+    } = req.body;
+
+    console.log("Updating tindak lanjut with ID:", id);
+    console.log("Request body:", req.body);
+    console.log("Target date:", target);
+    console.log("Status:", status);
+
+    // Validate required fields
+    if (!kategoriArahan || !pic || !division) {
+      console.error("Missing required fields");
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: kategoriArahan, pic, division",
+      });
+    }
+
+    // Validate status enum
+    const validStatuses = ['belum_ditindaklanjuti', 'dalam_proses', 'selesai', 'selesai_berkelanjutan'];
+    if (status && !validStatuses.includes(status)) {
+      console.error("Invalid status:", status);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+      });
+    }
+
+    // Format target date for MySQL (YYYY-MM-DD)
+    let formattedTarget = null;
+    if (target) {
+      try {
+        const date = new Date(target);
+        if (!isNaN(date.getTime())) {
+          formattedTarget = date.toISOString().split('T')[0]; // Convert to YYYY-MM-DD
+        }
+      } catch (error) {
+        console.error("Error formatting target date:", error);
+      }
+    }
+
+    console.log("Formatted target date:", formattedTarget);
+
+    // Check if record exists first
+    const [existingRecords] = await pool.execute(
+      "SELECT * FROM tindak_lanjut WHERE id = ?",
+      [id]
+    );
+
+    if (existingRecords.length === 0) {
+      console.error("Record not found with ID:", id);
+      return res.status(404).json({
+        success: false,
+        message: "Tindak lanjut not found",
+      });
+    }
+
+    console.log("Existing record:", existingRecords[0]);
+
+    const [result] = await pool.execute(
+      "UPDATE tindak_lanjut SET kategoriArahan = ?, detailArahan = ?, pic = ?, target = ?, status = ?, deskripsiTindakLanjut = ?, catatanSekretaris = ?, categoryId = ?, division = ?, fileAttachment = ?, updatedAt = NOW() WHERE id = ?",
+      [
+        kategoriArahan,
+        detailArahan,
+        pic,
+        formattedTarget,
+        status,
+        deskripsiTindakLanjut,
+        catatanSekretaris,
+        categoryId,
+        division,
+        fileAttachment,
+        id,
+      ]
+    );
+
+    console.log("Update result:", result);
+
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: "Tindak lanjut updated successfully" });
+    } else {
+      res.status(404).json({ success: false, message: "Tindak lanjut not found" });
+    }
+  } catch (error) {
+    console.error("Failed to update tindak lanjut:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      sqlMessage: error.sqlMessage,
+      sqlState: error.sqlState
+    });
+    
+    // Check if it's a database connection error
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      return res.status(500).json({
+        success: false,
+        message: "Database connection failed",
+        error: "Cannot connect to database server",
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: "Failed to update tindak lanjut",
+      error: error.message,
+    });
+  }
+});
+
+app.delete("/api/tindak-lanjut/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await pool.execute("DELETE FROM tindak_lanjut WHERE id = ?", [id]);
+
+    if (result.affectedRows > 0) {
+      res.json({ success: true, message: "Tindak lanjut deleted successfully" });
+    } else {
+      res.status(404).json({ success: false, message: "Tindak lanjut not found" });
+    }
+  } catch (error) {
+    console.error("Failed to delete tindak lanjut:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete tindak lanjut",
+      error: error.message,
+    });
+  }
+});
+
 app.post("/api/arahans", async (req, res) => {
   try {
     const { title, description, division, pic, status } = req.body;
@@ -769,6 +1046,179 @@ app.get("/api/health", (req, res) => {
     message: "Server is running",
     timestamp: new Date().toISOString(),
   });
+});
+
+// Test endpoint for tindak lanjut
+app.get("/api/test-tindak-lanjut", async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT COUNT(*) as count FROM tindak_lanjut");
+    res.json({
+      success: true,
+      message: "Tindak lanjut table exists",
+      count: rows[0].count,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Tindak lanjut table does not exist or error occurred",
+      error: error.message,
+    });
+  }
+});
+
+// Simple test endpoint (no database required)
+app.get("/api/test-simple", (req, res) => {
+  res.json({
+    success: true,
+    message: "Backend server is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Simple test endpoint
+app.get("/api/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "Server is working correctly",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Test database connection endpoint
+app.get("/api/test-db", async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT 1 as test");
+    res.json({
+      success: true,
+      message: "Database connection successful",
+      data: rows[0],
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Database connection failed",
+      error: error.message,
+    });
+  }
+});
+
+// Create tindak_lanjut table endpoint
+app.post("/api/create-tindak-lanjut-table", async (req, res) => {
+  try {
+    // Check if table already exists
+    const [tables] = await pool.execute("SHOW TABLES LIKE 'tindak_lanjut'");
+    
+    if (tables.length > 0) {
+      return res.json({
+        success: true,
+        message: "Table tindak_lanjut already exists",
+      });
+    }
+    
+    // Create the table
+    await pool.execute(`
+      CREATE TABLE tindak_lanjut (
+        id VARCHAR(36) PRIMARY KEY,
+        kategoriArahan VARCHAR(255) NOT NULL,
+        detailArahan TEXT,
+        pic VARCHAR(100) NOT NULL,
+        target DATE,
+        status ENUM('belum_ditindaklanjuti', 'dalam_proses', 'selesai', 'selesai_berkelanjutan') DEFAULT 'belum_ditindaklanjuti',
+        deskripsiTindakLanjut TEXT,
+        catatanSekretaris TEXT,
+        categoryId VARCHAR(36) NULL,
+        division VARCHAR(50) NOT NULL,
+        fileAttachment VARCHAR(500),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Insert sample data
+    await pool.execute(`
+      INSERT INTO tindak_lanjut (id, kategoriArahan, detailArahan, pic, target, status, deskripsiTindakLanjut, catatanSekretaris, categoryId, division, fileAttachment) VALUES
+      ('tl-1', 'Proyek Digital', 'Implementasi sistem digital untuk meningkatkan efisiensi kerja', 'BOD-1', '2025-12-31', 'dalam_proses', 'Sistem sedang dalam tahap pengembangan', 'Progress sesuai timeline', NULL, 'BOD-1', NULL),
+      ('tl-2', 'Optimasi Proses', 'Optimasi proses bisnis untuk meningkatkan produktivitas', 'VP OP', '2025-10-31', 'selesai', 'Proses optimasi telah selesai dan berjalan dengan baik', 'Proyek berhasil diselesaikan tepat waktu', NULL, 'VP OP', NULL),
+      ('tl-3', 'Pelatihan', 'Program pelatihan untuk meningkatkan skill karyawan', 'VP AGA', '2025-06-30', 'selesai_berkelanjutan', 'Program pelatihan berkelanjutan untuk maintenance skill', 'Program berjalan dengan baik dan perlu dilanjutkan', NULL, 'VP AGA', NULL),
+      ('tl-4', 'Audit Internal', 'Audit internal untuk memastikan compliance', 'SEKPER', '2025-03-31', 'belum_ditindaklanjuti', 'Belum dimulai, menunggu approval dari management', 'Perlu koordinasi dengan tim audit', NULL, 'SEKPER', NULL)
+    `);
+    
+    res.json({
+      success: true,
+      message: "Table tindak_lanjut created successfully with sample data",
+    });
+  } catch (error) {
+    console.error("Failed to create tindak_lanjut table:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create tindak_lanjut table",
+      error: error.message,
+    });
+  }
+});
+
+// Test tindak_lanjut table endpoint
+app.get("/api/test-tindak-lanjut-table", async (req, res) => {
+  try {
+    // Check if table exists
+    const [tables] = await pool.execute("SHOW TABLES LIKE 'tindak_lanjut'");
+    console.log("Tables found:", tables);
+    
+    if (tables.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Table tindak_lanjut does not exist",
+      });
+    }
+    
+    // Check table structure
+    const [columns] = await pool.execute("DESCRIBE tindak_lanjut");
+    console.log("Table structure:", columns);
+    
+    // Check if there are any records
+    const [rows] = await pool.execute("SELECT COUNT(*) as count FROM tindak_lanjut");
+    console.log("Record count:", rows[0].count);
+    
+    res.json({
+      success: true,
+      message: "Tindak lanjut table exists and is accessible",
+      tableExists: true,
+      recordCount: rows[0].count,
+      structure: columns
+    });
+  } catch (error) {
+    console.error("Error testing tindak_lanjut table:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error testing tindak_lanjut table",
+      error: error.message,
+    });
+  }
+});
+
+// Server status endpoint
+app.get("/api/server-status", async (req, res) => {
+  try {
+    // Test database connection
+    const connection = await pool.getConnection();
+    connection.release();
+    
+    res.json({
+      success: true,
+      message: "Server is running and database is connected",
+      timestamp: new Date().toISOString(),
+      database: "Connected"
+    });
+  } catch (error) {
+    console.error("Server status check failed:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server is running but database connection failed",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      database: "Disconnected"
+    });
+  }
 });
 
 // Start server

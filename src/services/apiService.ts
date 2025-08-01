@@ -3,6 +3,8 @@ const API_BASE_URL = "http://localhost:3001/api";
 // Generic API call function
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
+    console.log(`Making API call to: ${API_BASE_URL}${endpoint}`);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
         "Content-Type": "application/json",
@@ -10,6 +12,17 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
       },
       ...options,
     });
+
+    console.log(`Response status: ${response.status}`);
+    console.log(`Response headers:`, response.headers);
+
+    // Check if response is JSON
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error(`Non-JSON response from ${endpoint}:`, text);
+      throw new Error(`Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`);
+    }
 
     const data = await response.json();
 
@@ -27,6 +40,12 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 // Test connection
 export const testConnection = async () => {
   return apiCall("/test-connection");
+};
+
+// Test server status
+export const testServerStatus = async () => {
+  const response = await apiCall("/server-status");
+  return response;
 };
 
 // Users API
@@ -164,4 +183,49 @@ export const deleteFile = async (filename: string) => {
 
 export const getFileUrl = (filename: string) => {
   return `${API_BASE_URL}/uploads/${filename}`;
+};
+
+// Tindak Lanjut API
+export const getTindakLanjut = async () => {
+  const response = await apiCall("/tindak-lanjut");
+  return response.data;
+};
+
+export const getTindakLanjutById = async (id: string) => {
+  const response = await apiCall(`/tindak-lanjut/${id}`);
+  return response.data;
+};
+
+export const createTindakLanjut = async (tindakLanjutData: any) => {
+  const response = await apiCall("/tindak-lanjut", {
+    method: "POST",
+    body: JSON.stringify(tindakLanjutData),
+  });
+  return response.data;
+};
+
+export const updateTindakLanjut = async (id: string, tindakLanjutData: any) => {
+  console.log("apiService: Updating tindak lanjut with ID:", id);
+  console.log("apiService: Data to update:", tindakLanjutData);
+  
+  const response = await apiCall(`/tindak-lanjut/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(tindakLanjutData),
+  });
+  
+  console.log("apiService: Update response:", response);
+  return response;
+};
+
+export const deleteTindakLanjut = async (id: string) => {
+  const response = await apiCall(`/tindak-lanjut/${id}`, {
+    method: "DELETE",
+  });
+  return response;
+};
+
+// Test tindak_lanjut table
+export const testTindakLanjutTable = async () => {
+  const response = await apiCall("/test-tindak-lanjut-table");
+  return response;
 };
