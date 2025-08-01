@@ -10,6 +10,7 @@ import {
   Clock,
   PieChart as PieChartIcon,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import {
   PieChart,
@@ -52,65 +53,40 @@ const Dashboard: React.FC = () => {
       : getArahanByDivision(user?.role || "");
 
   const stats: DashboardStats = {
-    totalArahan: categoryTables
-      .filter((table) => selectedTable === "all" || table.id === selectedTable)
-      .reduce(
-        (sum, table) =>
-          sum +
-          table.tableData
-            .filter(
-              (data) =>
-                selectedDivisionFilter === "all" ||
-                data.division === selectedDivisionFilter
-            )
-            .reduce((tableSum, data) => tableSum + data.jumlah, 0),
-        0
-      ),
-    selesai: categoryTables
-      .filter((table) => selectedTable === "all" || table.id === selectedTable)
-      .reduce(
-        (sum, table) =>
-          sum +
-          table.tableData
-            .filter(
-              (data) =>
-                selectedDivisionFilter === "all" ||
-                data.division === selectedDivisionFilter
-            )
-            .reduce((tableSum, data) => tableSum + data.selesai, 0),
-        0
-      ),
-    selesaiBerkelanjutan: categoryTables
-      .filter((table) => selectedTable === "all" || table.id === selectedTable)
-      .reduce(
-        (sum, table) =>
-          sum +
-          table.tableData
-            .filter(
-              (data) =>
-                selectedDivisionFilter === "all" ||
-                data.division === selectedDivisionFilter
-            )
-            .reduce(
-              (tableSum, data) => tableSum + data.selesaiBerkelanjutan,
-              0
-            ),
-        0
-      ),
-    dalamProses: categoryTables
-      .filter((table) => selectedTable === "all" || table.id === selectedTable)
-      .reduce(
-        (sum, table) =>
-          sum +
-          table.tableData
-            .filter(
-              (data) =>
-                selectedDivisionFilter === "all" ||
-                data.division === selectedDivisionFilter
-            )
-            .reduce((tableSum, data) => tableSum + data.proses, 0),
-        0
-      ),
+    totalArahan: tindakLanjut
+      .filter((item) => selectedTable === "all" || 
+        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
+      .filter((item) =>
+        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      ).length,
+    selesai: tindakLanjut
+      .filter((item) => selectedTable === "all" || 
+        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
+      .filter((item) =>
+        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      )
+      .filter((item) => item.status === "selesai").length,
+    selesaiBerkelanjutan: tindakLanjut
+      .filter((item) => selectedTable === "all" || 
+        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
+      .filter((item) =>
+        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      )
+      .filter((item) => item.status === "selesai_berkelanjutan").length,
+    dalamProses: tindakLanjut
+      .filter((item) => selectedTable === "all" || 
+        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
+      .filter((item) =>
+        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      )
+      .filter((item) => item.status === "dalam_proses").length,
+    belumDitindaklanjuti: tindakLanjut
+      .filter((item) => selectedTable === "all" || 
+        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
+      .filter((item) =>
+        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      )
+      .filter((item) => item.status === "belum_ditindaklanjuti").length,
   };
 
   const uniquePICs = [
@@ -309,6 +285,14 @@ const Dashboard: React.FC = () => {
       color: "bg-orange-50 text-orange-700",
       iconColor: "text-orange-600",
     },
+    {
+      title: "Belum di Tindak Lanjuti",
+      value: stats.belumDitindaklanjuti,
+      description: "Arahan yang belum ditindaklanjuti",
+      icon: AlertTriangle,
+      color: "bg-red-50 text-red-700",
+      iconColor: "text-red-600",
+    },
   ];
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -364,7 +348,7 @@ const Dashboard: React.FC = () => {
               {categories
                 .filter(category => tindakLanjut.some(tl => tl.categoryId === category.id))
                 .map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category.id} value={category.categoryName}>
                     {category.categoryName}
                   </option>
                 ))}
@@ -388,7 +372,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {statCards.map((card, index) => {
             const Icon = card.icon;
             return (
@@ -457,7 +441,7 @@ const Dashboard: React.FC = () => {
             .filter((category) => {
               // Only show categories that have tindakLanjut data
               const hasTindakLanjut = tindakLanjut.some(tl => tl.categoryId === category.id);
-              return hasTindakLanjut && (selectedTable === "all" || category.id === selectedTable);
+              return hasTindakLanjut && (selectedTable === "all" || category.categoryName === selectedTable);
             })
             .map((category) => {
               const pieData = generateTindakLanjutPieChartData(category.categoryName).filter(

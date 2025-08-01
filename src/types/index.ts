@@ -65,6 +65,7 @@ export interface DashboardStats {
   selesai: number;
   selesaiBerkelanjutan: number;
   dalamProses: number;
+  belumDitindaklanjuti: number;
 }
 
 export interface TindakLanjut {
