@@ -382,16 +382,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       tl.pic === division
     );
 
-    console.log(`Stats for ${categoryName} - ${division}:`, {
-      total: tindakLanjutForCategoryAndDivision.length,
-      data: tindakLanjutForCategoryAndDivision.map(tl => ({
-        id: tl.id,
-        kategoriArahan: tl.kategoriArahan,
-        pic: tl.pic,
-        status: tl.status
-      }))
-    });
-
     const stats = {
       total: tindakLanjutForCategoryAndDivision.length,
       belumDitindaklanjuti: tindakLanjutForCategoryAndDivision.filter(tl => tl.status === 'belum_ditindaklanjuti').length,
@@ -403,8 +393,6 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     // Calculate progress
     const completed = stats.selesai + stats.selesaiBerkelanjutan;
     const progress = stats.total > 0 ? Math.round((completed / stats.total) * 100) : 0;
-
-    console.log(`Calculated stats for ${categoryName} - ${division}:`, stats);
 
     return {
       ...stats,

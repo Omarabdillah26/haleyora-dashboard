@@ -37,14 +37,27 @@ const TindakLanjutComponent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [divisionFilter, setDivisionFilter] = useState<string>("");
+  const [picFilter, setPicFilter] = useState<string>("");
+  const [kategoriArahanFilter, setKategoriArahanFilter] = useState<string>("");
   const [editingRow, setEditingRow] = useState<TindakLanjut | null>(null);
 
   // Read division filter from URL parameters
   useEffect(() => {
     const division = searchParams.get("division");
+    const pic = searchParams.get("pic");
+    const kategoriArahan = searchParams.get("kategoriArahan");
+    
     if (division) {
       setDivisionFilter(division);
-      setSearchTerm(division); // Also set search term to filter by division
+      setPicFilter(division); // Set PIC filter to division value
+    }
+    
+    if (pic) {
+      setPicFilter(pic);
+    }
+    
+    if (kategoriArahan) {
+      setKategoriArahanFilter(kategoriArahan);
     }
   }, [searchParams]);
 
@@ -357,7 +370,12 @@ const TindakLanjutComponent: React.FC = () => {
         t.kategoriArahan.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (t.detailArahan &&
         t.detailArahan.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesSearch;
+    
+    const matchesPicFilter = !picFilter || t.pic === picFilter;
+    const matchesKategoriArahanFilter = !kategoriArahanFilter || 
+      (t.kategoriArahan && t.kategoriArahan.toLowerCase() === kategoriArahanFilter.toLowerCase());
+    
+    return matchesSearch && matchesPicFilter && matchesKategoriArahanFilter;
   });
 
   // Pagination logic
@@ -405,18 +423,21 @@ const TindakLanjutComponent: React.FC = () => {
           </nav>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Tindak Lanjut
-            {divisionFilter && (
+            {(divisionFilter || picFilter || kategoriArahanFilter) && (
               <span className="text-lg font-normal text-orange-600 ml-2">
-                - Filter: {divisionFilter}
+                - Filter: {picFilter && `PIC: ${picFilter}`}
+                {kategoriArahanFilter && ` ${picFilter ? ', ' : ''}Kategori: ${kategoriArahanFilter}`}
               </span>
             )}
           </h1>
         </div>
         <div className="flex items-center space-x-3">
-          {divisionFilter && (
+          {(divisionFilter || picFilter || kategoriArahanFilter) && (
             <button
               onClick={() => {
                 setDivisionFilter("");
+                setPicFilter("");
+                setKategoriArahanFilter("");
                 setSearchTerm("");
                 setCurrentPage(1);
               }}
@@ -465,6 +486,40 @@ const TindakLanjutComponent: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            {/* PIC Filter */}
+            <div className="flex items-center space-x-2">
+              <User className="w-4 h-4 text-gray-500" />
+              <select
+                value={picFilter}
+                onChange={(e) => setPicFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="">All PIC</option>
+                {divisions.map((division) => (
+                  <option key={division} value={division}>
+                    {division}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Kategori Arahan Filter */}
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <select
+                value={kategoriArahanFilter}
+                onChange={(e) => setKategoriArahanFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="">All Categories</option>
+                {Array.from(new Set(tindakLanjut.map(t => t.kategoriArahan).filter(Boolean))).map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-500">
@@ -836,7 +891,6 @@ const TindakLanjutComponent: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
-                    <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   </div>
                 </div>
               </div>

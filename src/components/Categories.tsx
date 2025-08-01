@@ -72,8 +72,13 @@ const Categories: React.FC = () => {
     return baseColor.replace("500", "600");
   };
 
-  const navigateToTindakLanjut = (division: string) => {
-    navigate(`/tindak-lanjut?division=${division}`);
+  const navigateToTindakLanjut = (division: string, categoryName?: string) => {
+    const params = new URLSearchParams();
+    params.set('pic', division);
+    if (categoryName) {
+      params.set('kategoriArahan', categoryName);
+    }
+    navigate(`/tindak-lanjut?${params.toString()}`);
   };
 
   // Get unique category names from tindak_lanjut
@@ -249,7 +254,7 @@ const Categories: React.FC = () => {
                                 <td className="py-3 px-4">
                                   <button
                                     onClick={() =>
-                                      navigateToTindakLanjut(division)
+                                      navigateToTindakLanjut(division, categoryName)
                                     }
                                     className={`flex items-center space-x-2 hover:underline transition-colors ${getTableColor(
                                       categoryTables.length
