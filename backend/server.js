@@ -156,6 +156,14 @@ app.post("/api/users", async (req, res) => {
   try {
     const { name, username, role, password } = req.body;
 
+    // Validate required fields
+    if (!name || !username || !role || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required: name, username, role, password",
+      });
+    }
+
     // Generate UUID for id
     const id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 

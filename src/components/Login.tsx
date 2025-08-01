@@ -11,13 +11,13 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      login(username, password);
+      await login(username, password);
     } catch (error: any) {
       setError("Login gagal. Periksa username dan password Anda.");
       console.error("Login error:", error);

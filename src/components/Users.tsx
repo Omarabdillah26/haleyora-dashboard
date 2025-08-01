@@ -133,6 +133,22 @@ const Users: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate required fields
+    if (!formData.name.trim()) {
+      alert("Name is required");
+      return;
+    }
+
+    if (!formData.username.trim()) {
+      alert("Username is required");
+      return;
+    }
+
+    if (!editingUser && !formData.password.trim()) {
+      alert("Password is required for new users");
+      return;
+    }
+
     try {
       const url = editingUser
         ? `http://localhost:3001/api/users/${editingUser.id}`
@@ -152,10 +168,12 @@ const Users: React.FC = () => {
         await fetchUsers();
         handleCloseModal();
       } else {
-        console.error("Failed to save user");
+        const errorData = await response.json();
+        alert(`Failed to save user: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("Failed to save user:", error);
+      alert("Failed to save user. Please try again.");
     }
   };
 
