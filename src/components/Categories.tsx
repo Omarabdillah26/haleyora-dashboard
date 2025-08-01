@@ -17,6 +17,20 @@ import { CategoryTable, CategoryTableData } from "../types";
 
 const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
 
+// Array warna untuk tabel kategori
+const tableColors = [
+  "bg-orange-500", // Orange (default)
+  "bg-blue-500", // Blue
+  "bg-green-500", // Green
+  "bg-purple-500", // Purple
+  "bg-red-500", // Red
+  "bg-indigo-500", // Indigo
+  "bg-pink-500", // Pink
+  "bg-teal-500", // Teal
+  "bg-yellow-500", // Yellow
+  "bg-cyan-500", // Cyan
+];
+
 const Categories: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -41,7 +55,15 @@ const Categories: React.FC = () => {
     tableData: [] as CategoryTableData[],
   });
 
-  const getProgressColor = (progress: number) => {
+  const getProgressColor = (progress: number, tableIndex?: number) => {
+    if (tableIndex !== undefined) {
+      const baseColor = tableColors[tableIndex % tableColors.length];
+      if (progress >= 80) return baseColor;
+      if (progress >= 60) return baseColor.replace("500", "400");
+      if (progress >= 40) return baseColor.replace("500", "300");
+      return "bg-gray-300";
+    }
+    // Fallback untuk komponen lain yang tidak memiliki tableIndex
     if (progress >= 80) return "bg-orange-500";
     if (progress >= 60) return "bg-orange-400";
     if (progress >= 40) return "bg-orange-300";
@@ -52,6 +74,17 @@ const Categories: React.FC = () => {
     const total = data.jumlah;
     const completed = data.selesai + data.selesaiBerkelanjutan;
     return total > 0 ? Math.round((completed / total) * 100) : 0;
+  };
+
+  // Fungsi untuk mendapatkan warna tabel berdasarkan index
+  const getTableColor = (index: number) => {
+    return tableColors[index % tableColors.length];
+  };
+
+  // Fungsi untuk mendapatkan warna hover yang sesuai
+  const getTableHoverColor = (index: number) => {
+    const baseColor = tableColors[index % tableColors.length];
+    return baseColor.replace("500", "600");
   };
 
   const addTableRow = () => {
@@ -170,6 +203,12 @@ const Categories: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Rincian Kategori</h2>
           <p className="text-gray-600 mt-1">
             Progress monitoring per kategori dan divisi
+            {user?.role === "SUPER_ADMIN" && (
+              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                <Trash2 className="w-3 h-3 mr-1" />
+                Super Admin - Dapat Menghapus Kategori
+              </span>
+            )}
           </p>
         </div>
 
@@ -219,18 +258,52 @@ const Categories: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-8">
-              {filteredTables.map((table) => (
+              {filteredTables.map((table, tableIndex) => (
                 <div key={table.id} className="space-y-4">
                   {/* Category Header */}
-                  <div className="bg-orange-500 text-white px-6 py-3 font-semibold text-center">
-                    {table.categoryName}
+                  <div
+                    className={`${getTableColor(
+                      tableIndex
+                    )} text-white px-6 py-3 font-semibold text-center flex items-center justify-between`}
+                  >
+                    <span className="flex-1">{table.categoryName}</span>
+                    {user?.role === "SUPER_ADMIN" && (
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(table)}
+                          className="p-1 text-white hover:text-white/80 transition-colors"
+                          title="Edit Kategori"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(table.id)}
+                          className="p-1 text-white hover:text-red-200 transition-colors"
+                          title="Hapus Kategori"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Table */}
-                  <div className="overflow-x-auto">
+                  <div
+                    className={`overflow-x-auto border-2 ${getTableColor(
+                      tableIndex
+                    ).replace("bg-", "border-")} rounded-lg`}
+                  >
                     <table className="w-full">
                       <thead>
-                        <tr className="bg-gray-100">
+                        <tr
+                          className={`${getTableColor(tableIndex).replace(
+                            "500",
+                            "100"
+                          )} border-b ${getTableColor(tableIndex).replace(
+                            "bg-",
+                            "border-"
+                          )}`}
+                        >
                           <th className="text-left py-3 px-4 font-semibold text-gray-700">
                             NAMA DIVISI
                           </th>
@@ -252,11 +325,6 @@ const Categories: React.FC = () => {
                           <th className="text-center py-3 px-4 font-semibold text-gray-700">
                             PROGRESS
                           </th>
-                          {user?.role === "SUPER_ADMIN" && (
-                            <th className="text-center py-3 px-4 font-semibold text-gray-700">
-                              AKSI
-                            </th>
-                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -267,12 +335,20 @@ const Categories: React.FC = () => {
                               index % 2 === 0 ? "bg-white" : "bg-gray-50"
                             }
                           >
-                            <td className="py-3 px-4 font-medium text-orange-600">
+                            <td className="py-3 px-4 font-medium">
                               <button
                                 onClick={() =>
                                   navigateToTindakLanjut(data.division)
                                 }
-                                className="flex items-center space-x-2 hover:text-orange-800 hover:underline transition-colors"
+                                className={`flex items-center space-x-2 hover:underline transition-colors ${getTableColor(
+                                  tableIndex
+                                )
+                                  .replace("bg-", "text-")
+                                  .replace("500", "600")} hover:${getTableColor(
+                                  tableIndex
+                                )
+                                  .replace("bg-", "text-")
+                                  .replace("500", "800")}`}
                                 title={`Klik untuk melihat tindak lanjut ${data.division}`}
                               >
                                 <span>{data.division}</span>
@@ -298,7 +374,8 @@ const Categories: React.FC = () => {
                               <div className="flex items-center justify-center space-x-2">
                                 <span
                                   className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
-                                    data.progress
+                                    data.progress,
+                                    tableIndex
                                   )}`}
                                 >
                                   {data.progress}%
@@ -306,37 +383,27 @@ const Categories: React.FC = () => {
                                 <div className="w-16 bg-gray-200 rounded-full h-2">
                                   <div
                                     className={`h-2 rounded-full ${getProgressColor(
-                                      data.progress
+                                      data.progress,
+                                      tableIndex
                                     )}`}
                                     style={{ width: `${data.progress}%` }}
                                   ></div>
                                 </div>
                               </div>
                             </td>
-                            {user?.role === "SUPER_ADMIN" && (
-                              <td className="py-3 px-4 text-center">
-                                <div className="flex justify-center space-x-1">
-                                  <button
-                                    onClick={() => handleEdit(table)}
-                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteConfirm(table.id)}
-                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            )}
                           </tr>
                         ))}
 
                         {/* Summary Row */}
                         {table.tableData.length > 0 && (
-                          <tr className="bg-gray-200 font-semibold">
+                          <tr
+                            className={`${getTableColor(tableIndex).replace(
+                              "500",
+                              "200"
+                            )} font-semibold border-t ${getTableColor(
+                              tableIndex
+                            ).replace("bg-", "border-")}`}
+                          >
                             <td className="py-3 px-4">JUMLAH</td>
                             <td className="py-3 px-4 text-center">
                               {table.tableData.reduce(
@@ -390,7 +457,8 @@ const Categories: React.FC = () => {
                                 return (
                                   <span
                                     className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
-                                      overallProgress
+                                      overallProgress,
+                                      tableIndex
                                     )}`}
                                   >
                                     {overallProgress}%
@@ -398,9 +466,6 @@ const Categories: React.FC = () => {
                                 );
                               })()}
                             </td>
-                            {user?.role === "SUPER_ADMIN" && (
-                              <td className="py-3 px-4 text-center">-</td>
-                            )}
                           </tr>
                         )}
                       </tbody>
@@ -412,6 +477,29 @@ const Categories: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Super Admin Help Section */}
+      {user?.role === "SUPER_ADMIN" && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 text-sm font-medium">i</span>
+              </div>
+            </div>
+            <div className="ml-3">
+              <h4 className="text-sm font-medium text-blue-900">
+                Fitur Super Admin
+              </h4>
+              <p className="text-sm text-blue-700 mt-1">
+                Sebagai Super Admin, Anda dapat mengedit dan menghapus kategori.
+                Klik ikon edit (✏️) atau hapus (🗑️) di header setiap kategori
+                untuk mengelola data.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Form */}
       {isModalOpen && (
@@ -662,15 +750,37 @@ const Categories: React.FC = () => {
       {/* Delete Confirmation */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-sm">
+          <div className="bg-white rounded-lg w-full max-w-md">
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Hapus Kategori
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin menghapus kategori ini? Tindakan ini
-                tidak dapat dibatalkan.
-              </p>
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <Trash2 className="w-6 h-6 text-red-600" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Hapus Kategori
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Konfirmasi penghapusan kategori
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-600 mb-2">
+                  Apakah Anda yakin ingin menghapus kategori ini?
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-700">
+                    <strong>Peringatan:</strong> Tindakan ini akan menghapus
+                    seluruh data kategori beserta semua data tabel yang terkait.
+                    Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                </div>
+              </div>
+
               <div className="flex space-x-3">
                 <button
                   onClick={() => setDeleteConfirm(null)}
@@ -680,9 +790,10 @@ const Categories: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleDelete(deleteConfirm)}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
                 >
-                  Hapus
+                  <Trash2 className="w-4 h-4" />
+                  <span>Hapus Kategori</span>
                 </button>
               </div>
             </div>
