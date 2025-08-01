@@ -65,6 +65,7 @@ const TindakLanjutComponent: React.FC = () => {
     deleteTindakLanjut,
     categories,
     loading,
+    refreshing,
     error,
   } = useData();
   const { syncData } = useRealTimeSync();
@@ -542,7 +543,7 @@ const TindakLanjutComponent: React.FC = () => {
                 </span>
               )}
             </h1>
-            {loading && (
+            {refreshing && (
               <div className="flex items-center space-x-1 text-blue-600">
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Refreshing...</span>

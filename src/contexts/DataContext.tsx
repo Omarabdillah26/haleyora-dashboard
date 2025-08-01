@@ -14,6 +14,7 @@ interface DataContextType {
   categoryTables: CategoryTable[];
   tindakLanjut: TindakLanjut[];
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
   addArahan: (
     arahan: Omit<Arahan, "id" | "createdAt" | "updatedAt">
@@ -78,6 +79,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [categoryTables, setCategoryTables] = useState<CategoryTable[]>([]);
   const [tindakLanjut, setTindakLanjut] = useState<TindakLanjut[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Load data from API on mount
@@ -86,7 +88,12 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, []);
 
   const refreshData = async () => {
-    setLoading(true);
+    // Only set loading to true if there's no existing data
+    if (arahan.length === 0 && categories.length === 0 && tindakLanjut.length === 0) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     setError(null);
     try {
       // Load arahans
@@ -126,6 +133,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       setError(err instanceof Error ? err.message : "Failed to load data");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -481,6 +489,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     categoryTables,
     tindakLanjut,
     loading,
+    refreshing,
     error,
     addArahan,
     updateArahan,

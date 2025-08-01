@@ -5,13 +5,12 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { users } from "../data/mockData";
 import { User } from "../types";
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => void;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -42,23 +41,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const login = (username: string, password: string) => {
-    const foundUser = users.find(
-      (u) => u.username === username && u.password === password
-    );
+  const login = async (username: string, password: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:3001/api/users/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
 
-    if (foundUser) {
-      const userData: User = {
-        id: foundUser.id,
-        username: foundUser.username,
-        password: "", // Empty password for security
-        role: foundUser.role,
-        name: foundUser.name,
-      };
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
-    } else {
-      throw new Error("Invalid username or password");
+      const data = await response.json();
+
+      if (data.success) {
+        const userData: User = {
+          id: data.data.id,
+          username: data.data.username,
+          password: "", // Empty password for security
+          role: data.data.role,
+          name: data.data.name,
+        };
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+      } else {
+        throw new Error(data.message || "Login failed");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 

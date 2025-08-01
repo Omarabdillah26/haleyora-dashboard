@@ -41,6 +41,7 @@ const Categories: React.FC = () => {
     getCategoryStatsFromTindakLanjut,
     getCategoryStatsByDivision,
     loading,
+    refreshing,
     error,
     addCategory,
     refreshData,
@@ -252,14 +253,14 @@ const Categories: React.FC = () => {
               <div className="text-red-600 mb-4">❌ Error: {error}</div>
               <p className="text-gray-500">Failed to load categories</p>
             </div>
-          ) : tindakLanjut.length === 0 ? (
+          ) : categories.length === 0 && !loading && !refreshing ? (
             <div className="text-center py-8">
               <Grid3X3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">Belum ada kategori yang dibuat</p>
             </div>
           ) : (
             <div className="space-y-8">
-              {loading && (
+              {refreshing && (
                 <div className="flex items-center justify-center py-4">
                   <div className="flex items-center space-x-2 text-blue-600">
                     <RefreshCw className="w-4 h-4 animate-spin" />

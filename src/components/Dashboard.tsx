@@ -33,6 +33,7 @@ const Dashboard: React.FC = () => {
     getCategoryStatsFromTindakLanjut,
     getCategoryStatsByDivision,
     loading,
+    refreshing,
   } = useData();
   const { syncData } = useRealTimeSync();
 
@@ -342,7 +343,7 @@ const Dashboard: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               Progress Pengisian Tindak Lanjut Arahan Strategis
             </h2>
-            {loading && (
+            {refreshing && (
               <div className="flex items-center space-x-1 text-blue-600">
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Refreshing...</span>
