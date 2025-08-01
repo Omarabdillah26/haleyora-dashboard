@@ -1,6 +1,6 @@
-import React from 'react';
-import { LogOut, User } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import React from "react";
+import { LogOut, User } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -10,10 +10,10 @@ const Header: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Dashboard Progress Pengisian Tindak Lanjut Arahan Strategis PT P PLN ES
+            Progress Pengisian Tindak Lanjut Arahan Strategis
           </h1>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <User className="w-5 h-5 text-gray-400" />

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Building2, User, Lock, Eye, EyeOff } from "lucide-react";
+import logoImage from "../image/Logo_PLN-removebg-preview.png";
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -30,8 +31,12 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         {/* Logo and Title */}
         <div className="text-center">
-          <div className="mx-auto h-20 w-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg mb-6">
-            <Building2 className="h-10 w-10 text-white" />
+          <div className="mx-auto h-20 w-20 flex items-center justify-center shadow-lg mb-6">
+            <img 
+              src={logoImage} 
+              alt="PLN Logo" 
+              className="h-16 w-16 object-contain"
+            />
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Selamat Datang
