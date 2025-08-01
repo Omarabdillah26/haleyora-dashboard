@@ -280,74 +280,74 @@ const Categories: React.FC = () => {
                 
                 return (
                   <div key={category.id} className="space-y-4">
-                    {/* Category Header */}
-                    <div
-                      className={`${getTableColor(
+                  {/* Category Header */}
+                  <div
+                    className={`${getTableColor(
                         categoryTindakLanjut.length
-                      )} text-white px-6 py-3 font-semibold text-center flex items-center justify-between`}
-                    >
+                    )} text-white px-6 py-3 font-semibold text-center flex items-center justify-between`}
+                  >
                       <span className="flex-1">{category.categoryName}</span>
-                      {user?.role === "SUPER_ADMIN" && (
-                        <div className="flex items-center space-x-2">
-                          <button
+                    {user?.role === "SUPER_ADMIN" && (
+                      <div className="flex items-center space-x-2">
+                        <button
                             onClick={() => handleEditCategory(category.categoryName)}
-                            className="p-1 text-white hover:text-white/80 transition-colors"
-                            title="Edit Kategori"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
+                          className="p-1 text-white hover:text-white/80 transition-colors"
+                          title="Edit Kategori"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
                             onClick={() => handleDeleteCategory(category.categoryName)}
-                            className="p-1 text-white hover:text-red-200 transition-colors"
-                            title="Hapus Kategori"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                          className="p-1 text-white hover:text-red-200 transition-colors"
+                          title="Hapus Kategori"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-                    {/* Table */}
-                    <div
-                      className={`overflow-x-auto border-2 ${getTableColor(
+                  {/* Table */}
+                  <div
+                    className={`overflow-x-auto border-2 ${getTableColor(
                         categoryTindakLanjut.length
-                      ).replace("bg-", "border-")} rounded-lg`}
-                    >
-                      <table className="w-full">
-                        <thead>
-                          <tr
+                    ).replace("bg-", "border-")} rounded-lg`}
+                  >
+                    <table className="w-full">
+                      <thead>
+                        <tr
                             className={`${getTableColor(categoryTindakLanjut.length).replace(
-                              "500",
-                              "100"
+                            "500",
+                            "100"
                             )} border-b ${getTableColor(categoryTindakLanjut.length).replace(
-                              "bg-",
-                              "border-"
-                            )}`}
-                          >
-                            <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                              NAMA DIVISI
-                            </th>
-                            <th className="text-center py-3 px-4 font-semibold text-gray-700">
-                              JUMLAH
-                            </th>
-                            <th className="text-center py-3 px-4 font-semibold text-gray-700">
-                              PROSES
-                            </th>
-                            <th className="text-center py-3 px-4 font-semibold text-gray-700">
-                              SELESAI
-                            </th>
-                            <th className="text-center py-3 px-4 font-semibold text-gray-700">
-                              BELUM DITINDAKLANJUTI
-                            </th>
-                            <th className="text-center py-3 px-4 font-semibold text-gray-700">
-                              SELESAI BERKELANJUTAN
-                            </th>
-                            <th className="text-center py-3 px-4 font-semibold text-gray-700">
-                              PROGRESS
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                            "bg-",
+                            "border-"
+                          )}`}
+                        >
+                          <th className="text-left py-3 px-4 font-semibold text-gray-700">
+                            NAMA DIVISI
+                          </th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                            JUMLAH
+                          </th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                            PROSES
+                          </th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                            SELESAI
+                          </th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                            BELUM DITINDAKLANJUTI
+                          </th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                            SELESAI BERKELANJUTAN
+                          </th>
+                          <th className="text-center py-3 px-4 font-semibold text-gray-700">
+                            PROGRESS
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
                           {divisions.map((division) => {
                             const stats = getCategoryStatsByDivision(categoryName, division);
                             
@@ -357,68 +357,68 @@ const Categories: React.FC = () => {
                                 className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                               >
                                 <td className="py-3 px-4">
-                                  <button
-                                    onClick={() =>
+                              <button
+                                onClick={() =>
                                       navigateToTindakLanjut(division, categoryName)
-                                    }
-                                    className={`flex items-center space-x-2 hover:underline transition-colors ${getTableColor(
+                                }
+                                className={`flex items-center space-x-2 hover:underline transition-colors ${getTableColor(
                                       categoryTindakLanjut.length
-                                    )
-                                      .replace("bg-", "text-")
-                                      .replace("500", "600")} hover:${getTableColor(
+                                )
+                                  .replace("bg-", "text-")
+                                  .replace("500", "600")} hover:${getTableColor(
                                       categoryTindakLanjut.length
-                                    )
-                                      .replace("bg-", "text-")
-                                      .replace("500", "800")}`}
+                                )
+                                  .replace("bg-", "text-")
+                                  .replace("500", "800")}`}
                                     title={`Klik untuk melihat tindak lanjut ${division}`}
-                                  >
+                              >
                                     <span>{division}</span>
-                                    <ArrowRight className="w-4 h-4" />
-                                  </button>
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                                <ArrowRight className="w-4 h-4" />
+                              </button>
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {stats.total}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {stats.dalamProses}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {stats.selesai}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {stats.belumDitindaklanjuti}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {stats.selesaiBerkelanjutan}
-                                </td>
-                                <td className="py-3 px-4 text-center">
-                                  <div className="flex items-center justify-center space-x-2">
-                                    <span
-                                      className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex items-center justify-center space-x-2">
+                                <span
+                                  className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
                                         stats.progress,
                                         categoryTindakLanjut.length
-                                      )}`}
-                                    >
+                                  )}`}
+                                >
                                       {stats.progress}%
-                                    </span>
-                                    <div className="w-16 bg-gray-200 rounded-full h-2">
-                                      <div
-                                        className={`h-2 rounded-full ${getProgressColor(
+                                </span>
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full ${getProgressColor(
                                           stats.progress,
                                           categoryTindakLanjut.length
-                                        )}`}
+                                    )}`}
                                         style={{ width: `${stats.progress}%` }}
-                                      ></div>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
+                                  ></div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
                             );
                           })}
                         </tbody>
                       </table>
 
-                      {/* Summary Row */}
+                        {/* Summary Row */}
                       {(() => {
                         const totalStats = getCategoryStatsFromTindakLanjut(categoryName);
                         
@@ -427,38 +427,38 @@ const Categories: React.FC = () => {
                             <tbody>
                               <tr
                                 className={`${getTableColor(categoryTindakLanjut.length).replace(
-                                  "500",
-                                  "200"
-                                )} font-semibold border-t ${getTableColor(
+                              "500",
+                              "200"
+                            )} font-semibold border-t ${getTableColor(
                                   categoryTindakLanjut.length
-                                ).replace("bg-", "border-")}`}
-                              >
-                                <td className="py-3 px-4">JUMLAH</td>
-                                <td className="py-3 px-4 text-center">
+                            ).replace("bg-", "border-")}`}
+                          >
+                            <td className="py-3 px-4">JUMLAH</td>
+                            <td className="py-3 px-4 text-center">
                                   {totalStats.total}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {totalStats.dalamProses}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {totalStats.selesai}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {totalStats.belumDitindaklanjuti}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   {totalStats.selesaiBerkelanjutan}
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                            </td>
+                            <td className="py-3 px-4 text-center">
                                   <div className="flex items-center justify-center space-x-2">
-                                    <span
-                                      className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
                                         totalStats.progress || 0,
                                         categoryTindakLanjut.length
-                                      )}`}
-                                    >
+                                    )}`}
+                                  >
                                       {totalStats.progress || 0}%
-                                    </span>
+                                  </span>
                                     <div className="w-16 bg-gray-200 rounded-full h-2">
                                       <div
                                         className={`h-2 rounded-full ${getProgressColor(
@@ -469,10 +469,10 @@ const Categories: React.FC = () => {
                                       ></div>
                                     </div>
                                   </div>
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
+                            </td>
+                          </tr>
+                      </tbody>
+                    </table>
                         );
                       })()}
                     </div>
@@ -524,41 +524,41 @@ const Categories: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmitCategory} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Kategori *
-                </label>
-                <input
-                  type="text"
-                  value={formData.categoryName}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nama Kategori *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.categoryName}
                   onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Masukkan nama kategori"
-                  required
-                />
-              </div>
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deskripsi
-                </label>
-                <textarea
-                  value={formData.description}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Deskripsi
+                  </label>
+                  <textarea
+                    value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
+                    rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   placeholder="Masukkan deskripsi kategori (opsional)"
-                />
+                  />
               </div>
 
               <div className="flex items-center space-x-3 pt-4">
-                <button
+                  <button
                   type="submit"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? "Menyimpan..." : (isEditMode ? "Update Kategori" : "Simpan Kategori")}
-                </button>
+                              </button>
                 <button
                   type="button"
                   onClick={handleCloseModal}
@@ -578,29 +578,29 @@ const Categories: React.FC = () => {
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Konfirmasi Hapus
-            </h3>
+                  </h3>
             <p className="text-gray-600 mb-6">
               Apakah Anda yakin ingin menghapus kategori "{deleteConfirm}"?
               <br />
               <span className="text-sm text-red-600">
-                Tindakan ini tidak dapat dibatalkan.
+                    Tindakan ini tidak dapat dibatalkan.
               </span>
-            </p>
+                  </p>
             <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
+                <button
+                  onClick={() => setDeleteConfirm(null)}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Batal
-              </button>
-              <button
+                >
+                  Batal
+                </button>
+                <button
                 onClick={() => {
                   confirmDeleteCategory(deleteConfirm);
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 Hapus
-              </button>
+                </button>
             </div>
           </div>
         </div>
