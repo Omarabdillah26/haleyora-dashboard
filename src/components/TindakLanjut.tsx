@@ -20,27 +20,69 @@ import {
   Paperclip,
   ClipboardList,
   RefreshCw,
+  Lock,
 } from "lucide-react";
 import { TindakLanjut } from "../types";
-import { uploadFiles, deleteFile, getFileUrl, testTindakLanjutTable, testServerStatus } from "../services/apiService";
+import {
+  uploadFiles,
+  deleteFile,
+  getFileUrl,
+  testTindakLanjutTable,
+  testServerStatus,
+} from "../services/apiService";
 
 const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
 
+// Helper function to check if user can edit tindak lanjut
+const canUserEditTindakLanjut = (
+  userRole: string,
+  tindakLanjutPic: string
+): boolean => {
+  // SUPER_ADMIN can edit everything
+  if (userRole === "SUPER_ADMIN") {
+    return true;
+  }
+
+  // User can only edit if they are the PIC (Person in Charge)
+  return userRole === tindakLanjutPic;
+};
+
+// Helper function to check if user can view tindak lanjut
+const canUserViewTindakLanjut = (
+  userRole: string,
+  tindakLanjutPic: string
+): boolean => {
+  // All users can view all data (no restrictions on viewing)
+  return true;
+};
+
 const TindakLanjutComponent: React.FC = () => {
   const { user } = useAuth();
-  const { tindakLanjut, addTindakLanjut, updateTindakLanjut, deleteTindakLanjut, categories, loading, error } = useData();
+  const {
+    tindakLanjut,
+    addTindakLanjut,
+    updateTindakLanjut,
+    deleteTindakLanjut,
+    categories,
+    loading,
+    error,
+  } = useData();
   const { syncData } = useRealTimeSync();
   const [searchParams] = useSearchParams();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | undefined>(
+    undefined
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [divisionFilter, setDivisionFilter] = useState<string>("");
   const [picFilter, setPicFilter] = useState<string>("");
   const [kategoriArahanFilter, setKategoriArahanFilter] = useState<string>("");
-  const [editingRow, setEditingRow] = useState<TindakLanjut | null>(null);
+  const [editingRow, setEditingRow] = useState<TindakLanjut | undefined>(
+    undefined
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Read division filter from URL parameters
@@ -48,16 +90,16 @@ const TindakLanjutComponent: React.FC = () => {
     const division = searchParams.get("division");
     const pic = searchParams.get("pic");
     const kategoriArahan = searchParams.get("kategoriArahan");
-    
+
     if (division) {
       setDivisionFilter(division);
       setPicFilter(division); // Set PIC filter to division value
     }
-    
+
     if (pic) {
       setPicFilter(pic);
     }
-    
+
     if (kategoriArahan) {
       setKategoriArahanFilter(kategoriArahan);
     }
@@ -73,10 +115,16 @@ const TindakLanjutComponent: React.FC = () => {
       console.log("Testing database connection...");
       const result = await testTindakLanjutTable();
       console.log("Database test result:", result);
-      alert(`Database test: ${result.message}\nRecord count: ${result.recordCount}`);
+      alert(
+        `Database test: ${result.message}\nRecord count: ${result.recordCount}`
+      );
     } catch (error) {
       console.error("Database test failed:", error);
-      alert(`Database test failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Database test failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -88,7 +136,11 @@ const TindakLanjutComponent: React.FC = () => {
       alert(`Server status: ${result.message}\nDatabase: ${result.database}`);
     } catch (error) {
       console.error("Server status test failed:", error);
-      alert(`Server status test failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Server status test failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -97,7 +149,11 @@ const TindakLanjutComponent: React.FC = () => {
     detailArahan: "",
     pic: "BOD-1",
     target: "",
-    status: "belum_ditindaklanjuti" as "belum_ditindaklanjuti" | "dalam_proses" | "selesai" | "selesai_berkelanjutan",
+    status: "belum_ditindaklanjuti" as
+      | "belum_ditindaklanjuti"
+      | "dalam_proses"
+      | "selesai"
+      | "selesai_berkelanjutan",
     deskripsiTindakLanjut: "",
     catatanSekretaris: "",
     categoryId: "",
@@ -146,49 +202,69 @@ const TindakLanjutComponent: React.FC = () => {
   };
 
   const handleAddNew = () => {
+    // Check if user can create new tindak lanjut
+    if (user?.role !== "SUPER_ADMIN" && user?.role !== "BOD-1") {
+      alert(
+        "Anda tidak memiliki akses untuk membuat tindak lanjut baru. Hanya SUPER_ADMIN dan BOD-1 yang dapat membuat tindak lanjut baru."
+      );
+      return;
+    }
+
     setFormData({
       kategoriArahan: "",
       detailArahan: "",
       pic: "BOD-1",
       target: "",
-      status: "belum_ditindaklanjuti" as "belum_ditindaklanjuti" | "dalam_proses" | "selesai" | "selesai_berkelanjutan",
+      status: "belum_ditindaklanjuti" as
+        | "belum_ditindaklanjuti"
+        | "dalam_proses"
+        | "selesai"
+        | "selesai_berkelanjutan",
       deskripsiTindakLanjut: "",
       catatanSekretaris: "",
       categoryId: "",
       division: "BOD-1",
       fileAttachment: "",
     });
-    setEditingRow(null);
+    setEditingRow(undefined);
     setIsModalOpen(true);
   };
 
   const handleEdit = (tindakLanjut: TindakLanjut) => {
+    // All users can view the edit page, but only PIC can actually edit
+    // Permissions are checked in the form UI and submit function
+
     console.log("Editing tindak lanjut:", tindakLanjut);
     console.log("Available categories:", categories);
     console.log("Tindak lanjut kategoriArahan:", tindakLanjut.kategoriArahan);
-    console.log("Available category names:", categories.map(cat => cat.categoryName));
-    
+    console.log(
+      "Available category names:",
+      categories.map((cat) => cat.categoryName)
+    );
+
     setEditingRow(tindakLanjut);
-    
+
     // Find the categoryId based on kategoriArahan
-    const matchingCategory = categories.find(cat => cat.categoryName === tindakLanjut.kategoriArahan);
+    const matchingCategory = categories.find(
+      (cat) => cat.categoryName === tindakLanjut.kategoriArahan
+    );
     const categoryId = matchingCategory?.id || tindakLanjut.categoryId || "";
-    
+
     console.log("Matching category:", matchingCategory);
     console.log("Selected categoryId:", categoryId);
-    
+
     // Format target date for input field (YYYY-MM-DD)
     let targetDate = "";
     if (tindakLanjut.target) {
       try {
         const date = new Date(tindakLanjut.target);
-        targetDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+        targetDate = date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
       } catch (error) {
         console.error("Error formatting target date:", error);
         targetDate = "";
       }
     }
-    
+
     setFormData({
       kategoriArahan: tindakLanjut.kategoriArahan,
       detailArahan: tindakLanjut.detailArahan,
@@ -217,11 +293,28 @@ const TindakLanjutComponent: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    // Find the tindak lanjut to check permissions
+    const tindakLanjutToDelete = tindakLanjut.find((t) => t.id === id);
+
+    if (!tindakLanjutToDelete) {
+      alert("Data tidak ditemukan");
+      return;
+    }
+
+    // Check if user can delete this tindak lanjut
+    if (user?.role !== "SUPER_ADMIN") {
+      alert(
+        "Anda tidak memiliki akses untuk menghapus data ini. Hanya SUPER_ADMIN yang dapat menghapus data tindak lanjut."
+      );
+      setDeleteConfirm(undefined);
+      return;
+    }
+
     try {
       await deleteTindakLanjut(id);
       // Sync data immediately after delete to ensure all components are updated
       await syncData();
-      setDeleteConfirm(null);
+      setDeleteConfirm(undefined);
     } catch (error) {
       console.error("Failed to delete tindak lanjut:", error);
     }
@@ -231,6 +324,17 @@ const TindakLanjutComponent: React.FC = () => {
     e.preventDefault();
 
     console.log("Submitting form data:", formData);
+
+    // Check permissions for creating new tindak lanjut
+    if (!editingRow && user?.role !== "SUPER_ADMIN" && user?.role !== "BOD-1") {
+      alert(
+        "Anda tidak memiliki akses untuk membuat tindak lanjut baru. Hanya SUPER_ADMIN dan BOD-1 yang dapat membuat tindak lanjut baru."
+      );
+      return;
+    }
+
+    // All users can edit tindak lanjut (field restrictions are handled in the form UI)
+    // No need to check permissions here
 
     // Validate required fields
     if (!formData.categoryId) {
@@ -253,7 +357,7 @@ const TindakLanjutComponent: React.FC = () => {
           return;
         }
         // Send date as YYYY-MM-DD format instead of ISO string
-        targetDate = date.toISOString().split('T')[0];
+        targetDate = date.toISOString().split("T")[0];
       } catch (error) {
         console.error("Error formatting target date:", error);
         alert("Invalid target date");
@@ -295,7 +399,8 @@ const TindakLanjutComponent: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       console.error("Failed to save tindak lanjut:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       alert(`Failed to save tindak lanjut: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
@@ -304,13 +409,17 @@ const TindakLanjutComponent: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingRow(null);
+    setEditingRow(undefined);
     setFormData({
       kategoriArahan: "",
       detailArahan: "",
       pic: "BOD-1",
       target: "",
-      status: "belum_ditindaklanjuti" as "belum_ditindaklanjuti" | "dalam_proses" | "selesai" | "selesai_berkelanjutan",
+      status: "belum_ditindaklanjuti" as
+        | "belum_ditindaklanjuti"
+        | "dalam_proses"
+        | "selesai"
+        | "selesai_berkelanjutan",
       deskripsiTindakLanjut: "",
       catatanSekretaris: "",
       categoryId: "",
@@ -368,18 +477,20 @@ const TindakLanjutComponent: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Filter and search logic
+  // Filter and search logic - all users can view all data
   const filteredTindakLanjut = tindakLanjut.filter((t) => {
     const matchesSearch =
       (t.kategoriArahan &&
         t.kategoriArahan.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (t.detailArahan &&
         t.detailArahan.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     const matchesPicFilter = !picFilter || t.pic === picFilter;
-    const matchesKategoriArahanFilter = !kategoriArahanFilter || 
-      (t.kategoriArahan && t.kategoriArahan.toLowerCase() === kategoriArahanFilter.toLowerCase());
-    
+    const matchesKategoriArahanFilter =
+      !kategoriArahanFilter ||
+      (t.kategoriArahan &&
+        t.kategoriArahan.toLowerCase() === kategoriArahanFilter.toLowerCase());
+
     return matchesSearch && matchesPicFilter && matchesKategoriArahanFilter;
   });
 
@@ -424,7 +535,10 @@ const TindakLanjutComponent: React.FC = () => {
               {(divisionFilter || picFilter || kategoriArahanFilter) && (
                 <span className="text-lg font-normal text-orange-600 ml-2">
                   - Filter: {picFilter && `PIC: ${picFilter}`}
-                  {kategoriArahanFilter && ` ${picFilter ? ', ' : ''}Kategori: ${kategoriArahanFilter}`}
+                  {kategoriArahanFilter &&
+                    ` ${
+                      picFilter ? ", " : ""
+                    }Kategori: ${kategoriArahanFilter}`}
                 </span>
               )}
             </h1>
@@ -434,6 +548,15 @@ const TindakLanjutComponent: React.FC = () => {
                 <span className="text-sm">Refreshing...</span>
               </div>
             )}
+          </div>
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <User className="w-4 h-4" />
+            <span>
+              Logged in as: <strong>{user?.name}</strong> ({user?.role})
+            </span>
+            <span className="text-blue-600">•</span>
+            <Eye className="w-4 h-4 text-blue-600" />
+            <span className="text-blue-600">View all data</span>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -464,16 +587,20 @@ const TindakLanjutComponent: React.FC = () => {
           >
             <span>Test Server</span>
           </button> */}
-          <button
-            onClick={handleAddNew}
-            className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">New tindak lanjut</span>
-            <span className="sm:hidden">New</span>
-          </button>
+          {(user?.role === "SUPER_ADMIN" || user?.role === "BOD-1") && (
+            <button
+              onClick={handleAddNew}
+              className="flex items-center space-x-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New tindak lanjut</span>
+              <span className="sm:hidden">New</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Role-based Access Control Info */}
 
       {/* Search and Filter */}
       <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
@@ -507,7 +634,7 @@ const TindakLanjutComponent: React.FC = () => {
                 ))}
               </select>
             </div>
-            
+
             {/* Kategori Arahan Filter */}
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-gray-500" />
@@ -517,14 +644,18 @@ const TindakLanjutComponent: React.FC = () => {
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">All Categories</option>
-                {Array.from(new Set(tindakLanjut.map(t => t.kategoriArahan).filter(Boolean))).map((category) => (
+                {Array.from(
+                  new Set(
+                    tindakLanjut.map((t) => t.kategoriArahan).filter(Boolean)
+                  )
+                ).map((category) => (
                   <option key={category} value={category}>
                     {category}
                   </option>
                 ))}
               </select>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-500">
@@ -580,6 +711,9 @@ const TindakLanjutComponent: React.FC = () => {
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                   Files
                 </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  Access
+                </th>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                   Actions
                 </th>
@@ -594,22 +728,41 @@ const TindakLanjutComponent: React.FC = () => {
                         <ClipboardList className="w-6 h-6 text-gray-400" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900">No tindak lanjut found</h3>
+                        <h3 className="text-lg font-medium text-gray-900">
+                          No tindak lanjut found
+                        </h3>
                         <p className="text-sm text-gray-500 mt-1">
-                          {searchTerm 
+                          {searchTerm
                             ? `No results found for "${searchTerm}"`
-                            : "Get started by creating a new tindak lanjut"
-                          }
+                            : "Tidak ada data tindak lanjut yang tersedia"}
                         </p>
                       </div>
-                      {!searchTerm && (
-                        <button
-                          onClick={handleAddNew}
-                          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create first tindak lanjut
-                        </button>
+                      {!searchTerm &&
+                        (user?.role === "SUPER_ADMIN" ||
+                          user?.role === "BOD-1") && (
+                          <button
+                            onClick={handleAddNew}
+                            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create first tindak lanjut
+                          </button>
+                        )}
+                      {!searchTerm &&
+                        user?.role !== "SUPER_ADMIN" &&
+                        user?.role !== "BOD-1" && (
+                          <div className="mt-4 text-sm text-gray-500">
+                            <Lock className="w-4 h-4 inline mr-1" />
+                            Hanya SUPER_ADMIN dan BOD-1 yang dapat membuat
+                            tindak lanjut baru
+                          </div>
+                        )}
+                      {!searchTerm && filteredTindakLanjut.length === 0 && (
+                        <div className="mt-4 text-sm text-blue-600">
+                          <Eye className="w-4 h-4 inline mr-1" />
+                          Anda dapat melihat semua data tindak lanjut dari semua
+                          divisi
+                        </div>
                       )}
                     </div>
                   </td>
@@ -617,9 +770,13 @@ const TindakLanjutComponent: React.FC = () => {
               ) : (
                 currentTindakLanjut.map((row) => {
                   // Find category name from categories array
-                  const category = categories.find(cat => cat.id === row.categoryId);
-                  const categoryName = category ? category.categoryName : row.kategoriArahan || "Unknown Category";
-                  
+                  const category = categories.find(
+                    (cat) => cat.id === row.categoryId
+                  );
+                  const categoryName = category
+                    ? category.categoryName
+                    : row.kategoriArahan || "Unknown Category";
+
                   return (
                     <tr
                       key={row.id}
@@ -638,14 +795,11 @@ const TindakLanjutComponent: React.FC = () => {
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {row.target
-                          ? new Date(row.target).toLocaleDateString(
-                              "en-GB",
-                              {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              }
-                            )
+                          ? new Date(row.target).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
                           : "Tidak ada target"}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
@@ -672,27 +826,58 @@ const TindakLanjutComponent: React.FC = () => {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-400">No files</span>
+                          <span className="text-xs text-gray-400">
+                            No files
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {canUserEditTindakLanjut(user?.role || "", row.pic) ? (
+                          user?.role === "SUPER_ADMIN" ? (
+                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                              Full Access
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                              Limited Edit
+                            </span>
+                          )
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                            View Only
+                          </span>
                         )}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleEdit(row)}
-                            className="text-blue-600 hover:text-blue-900 transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              setDeleteConfirm(row.id)
-                            }
-                            className="text-red-600 hover:text-red-900 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canUserEditTindakLanjut(
+                            user?.role || "",
+                            row.pic
+                          ) ? (
+                            <>
+                              <button
+                                onClick={() => handleEdit(row)}
+                                className="text-blue-600 hover:text-blue-900 transition-colors"
+                                title="Edit (with field restrictions)"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              {user?.role === "SUPER_ADMIN" && (
+                                <button
+                                  onClick={() => setDeleteConfirm(row.id)}
+                                  className="text-red-600 hover:text-red-900 transition-colors"
+                                  title="Delete (SUPER_ADMIN only)"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex items-center space-x-1 text-blue-400">
+                              <Eye className="w-4 h-4" />
+                              <span className="text-xs">View Only</span>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -733,7 +918,9 @@ const TindakLanjutComponent: React.FC = () => {
                     {Math.min(indexOfLastItem, filteredTindakLanjut.length)}
                   </span>{" "}
                   of{" "}
-                  <span className="font-medium">{filteredTindakLanjut.length}</span>{" "}
+                  <span className="font-medium">
+                    {filteredTindakLanjut.length}
+                  </span>{" "}
                   results
                 </p>
               </div>
@@ -773,7 +960,7 @@ const TindakLanjutComponent: React.FC = () => {
             </p>
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setDeleteConfirm(null)}
+                onClick={() => setDeleteConfirm(undefined)}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Batal
@@ -820,13 +1007,18 @@ const TindakLanjutComponent: React.FC = () => {
                   <select
                     value={formData.categoryId}
                     onChange={(e) => {
-                      const selectedCategory = categories.find(cat => cat.id === e.target.value);
+                      const selectedCategory = categories.find(
+                        (cat) => cat.id === e.target.value
+                      );
                       handleFormDataChange("categoryId", e.target.value);
-                      handleFormDataChange("kategoriArahan", selectedCategory?.categoryName || "");
+                      handleFormDataChange(
+                        "kategoriArahan",
+                        selectedCategory?.categoryName || ""
+                      );
                     }}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
-                    disabled={loading}
+                    disabled={editingRow && user?.role !== "SUPER_ADMIN"}
                   >
                     <option value="">
                       {loading ? "Loading categories..." : "Select an option"}
@@ -840,11 +1032,18 @@ const TindakLanjutComponent: React.FC = () => {
                   <button
                     type="button"
                     className="p-2 text-gray-400 hover:text-gray-600 border border-gray-300 rounded-lg"
-                    disabled={loading}
+                    disabled={
+                      loading || (editingRow && user?.role !== "SUPER_ADMIN")
+                    }
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
+                {editingRow && user?.role !== "SUPER_ADMIN" && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Hanya SUPER_ADMIN yang dapat mengubah kategori arahan
+                  </p>
+                )}
               </div>
 
               {/* Detail Arahan */}
@@ -860,7 +1059,14 @@ const TindakLanjutComponent: React.FC = () => {
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   required
+                  disabled={
+                    editingRow &&
+                    !canUserEditTindakLanjut(user?.role || "", editingRow.pic)
+                  }
                 />
+                <p className="text-xs text-green-600 mt-1">
+                  Semua user dapat mengubah detail arahan
+                </p>
               </div>
 
               {/* PIC and Target */}
@@ -876,6 +1082,7 @@ const TindakLanjutComponent: React.FC = () => {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
+                    disabled={editingRow && user?.role !== "SUPER_ADMIN"}
                   >
                     {divisions.map((division) => (
                       <option key={division} value={division}>
@@ -883,6 +1090,11 @@ const TindakLanjutComponent: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                  {editingRow && user?.role !== "SUPER_ADMIN" && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Hanya SUPER_ADMIN yang dapat mengubah PIC
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -894,15 +1106,18 @@ const TindakLanjutComponent: React.FC = () => {
                       type="date"
                       value={formData.target}
                       onChange={(e) =>
-                        handleFormDataChange(
-                          "target",
-                          e.target.value
-                        )
+                        handleFormDataChange("target", e.target.value)
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
+                      disabled={editingRow && user?.role !== "SUPER_ADMIN"}
                     />
                   </div>
+                  {editingRow && user?.role !== "SUPER_ADMIN" && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Hanya SUPER_ADMIN yang dapat mengubah target penyelesaian
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -918,6 +1133,10 @@ const TindakLanjutComponent: React.FC = () => {
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
+                  disabled={
+                    editingRow &&
+                    !canUserEditTindakLanjut(user?.role || "", editingRow.pic)
+                  }
                 >
                   <option value="belum_ditindaklanjuti">
                     Belum Ditindaklanjuti
@@ -928,6 +1147,9 @@ const TindakLanjutComponent: React.FC = () => {
                     Selesai Berkelanjutan
                   </option>
                 </select>
+                <p className="text-xs text-green-600 mt-1">
+                  Semua user dapat mengubah status tindak lanjut
+                </p>
               </div>
 
               {/* Deskripsi Tindak Lanjut */}
@@ -945,7 +1167,14 @@ const TindakLanjutComponent: React.FC = () => {
                   }
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  disabled={
+                    editingRow &&
+                    !canUserEditTindakLanjut(user?.role || "", editingRow.pic)
+                  }
                 />
+                <p className="text-xs text-green-600 mt-1">
+                  Semua user dapat mengubah deskripsi tindak lanjut
+                </p>
               </div>
 
               {/* Catatan Sekretaris & Komite Dekom */}
@@ -960,7 +1189,14 @@ const TindakLanjutComponent: React.FC = () => {
                   }
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  disabled={
+                    editingRow &&
+                    !canUserEditTindakLanjut(user?.role || "", editingRow.pic)
+                  }
                 />
+                <p className="text-xs text-green-600 mt-1">
+                  Semua user dapat mengubah catatan sekretaris
+                </p>
               </div>
 
               {/* File Upload */}
@@ -968,6 +1204,9 @@ const TindakLanjutComponent: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Upload File
                 </label>
+                <p className="text-xs text-green-600 mb-2">
+                  Semua user dapat mengupload dan mengelola file
+                </p>
                 <div className="space-y-3">
                   {/* File Input */}
                   <div className="flex items-center space-x-3">
@@ -978,11 +1217,25 @@ const TindakLanjutComponent: React.FC = () => {
                       onChange={handleFileUpload}
                       className="hidden"
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt"
+                      disabled={
+                        editingRow &&
+                        !canUserEditTindakLanjut(
+                          user?.role || "",
+                          editingRow.pic
+                        )
+                      }
                     />
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      disabled={
+                        editingRow &&
+                        !canUserEditTindakLanjut(
+                          user?.role || "",
+                          editingRow.pic
+                        )
+                      }
                     >
                       <Upload className="w-4 h-4" />
                       <span>Choose Files</span>
@@ -1046,19 +1299,31 @@ const TindakLanjutComponent: React.FC = () => {
               <div className="flex items-center space-x-3 pt-6 border-t">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={
+                    isSubmitting ||
+                    (editingRow &&
+                      !canUserEditTindakLanjut(
+                        user?.role || "",
+                        editingRow.pic
+                      ))
+                  }
                 >
-                  {isSubmitting ? "Saving..." : (editingRow ? "Update" : "Create")}
+                  {isSubmitting
+                    ? "Saving..."
+                    : editingRow
+                    ? "Update"
+                    : "Create"}
                 </button>
-                {!editingRow && (
-                  <button
-                    type="button"
-                    className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-                  >
-                    Create & create another
-                  </button>
-                )}
+                {!editingRow &&
+                  (user?.role === "SUPER_ADMIN" || user?.role === "BOD-1") && (
+                    <button
+                      type="button"
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                      Create & create another
+                    </button>
+                  )}
                 <button
                   type="button"
                   onClick={handleCloseModal}
