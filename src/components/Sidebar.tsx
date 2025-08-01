@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import logoImage from "../image/Logo_PLN-removebg-preview.png";
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
@@ -58,7 +59,11 @@ const Sidebar: React.FC = () => {
       <div className="p-6 border-b">
         <div className="flex items-center space-x-3">
           <div className="bg-blue-600 rounded-lg w-10 h-10 flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-white" />
+            <img 
+              src={logoImage} 
+              alt="PLN Logo" 
+              className="w-8 h-8 object-contain"
+            />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">REPLAY</h1>
