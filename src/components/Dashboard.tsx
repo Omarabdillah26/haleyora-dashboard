@@ -307,12 +307,8 @@ const Dashboard: React.FC = () => {
       <div className="bg-white rounded-lg p-6 shadow-sm">
         <div className="text-center mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Progress Pengisian Tindak Lanjut Arahan Strategis PT PLN (Persero)
+            Progress Pengisian Tindak Lanjut Arahan Strategis
           </h2>
-          <h3 className="text-lg font-medium text-gray-700">
-            Divisi{" "}
-            {user?.role === "SUPER_ADMIN" ? selectedDivision : user?.role}
-          </h3>
         </div>
 
         <div className="flex flex-wrap gap-4 mb-6">
