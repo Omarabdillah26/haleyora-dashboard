@@ -19,6 +19,7 @@ import {
   Download,
   Paperclip,
   ClipboardList,
+  RefreshCw,
 } from "lucide-react";
 import { TindakLanjut } from "../types";
 import { uploadFiles, deleteFile, getFileUrl, testTindakLanjutTable, testServerStatus } from "../services/apiService";
@@ -40,6 +41,7 @@ const TindakLanjutComponent: React.FC = () => {
   const [picFilter, setPicFilter] = useState<string>("");
   const [kategoriArahanFilter, setKategoriArahanFilter] = useState<string>("");
   const [editingRow, setEditingRow] = useState<TindakLanjut | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Read division filter from URL parameters
   useEffect(() => {
@@ -259,6 +261,7 @@ const TindakLanjutComponent: React.FC = () => {
       }
     }
 
+    setIsSubmitting(true);
     try {
       const newTindakLanjut = {
         kategoriArahan: formData.kategoriArahan,
@@ -294,6 +297,8 @@ const TindakLanjutComponent: React.FC = () => {
       console.error("Failed to save tindak lanjut:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       alert(`Failed to save tindak lanjut: ${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -387,14 +392,6 @@ const TindakLanjutComponent: React.FC = () => {
   );
   const totalPages = Math.ceil(filteredTindakLanjut.length / itemsPerPage);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -421,15 +418,23 @@ const TindakLanjutComponent: React.FC = () => {
               </li>
             </ol>
           </nav>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Tindak Lanjut
-            {(divisionFilter || picFilter || kategoriArahanFilter) && (
-              <span className="text-lg font-normal text-orange-600 ml-2">
-                - Filter: {picFilter && `PIC: ${picFilter}`}
-                {kategoriArahanFilter && ` ${picFilter ? ', ' : ''}Kategori: ${kategoriArahanFilter}`}
-              </span>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Tindak Lanjut
+              {(divisionFilter || picFilter || kategoriArahanFilter) && (
+                <span className="text-lg font-normal text-orange-600 ml-2">
+                  - Filter: {picFilter && `PIC: ${picFilter}`}
+                  {kategoriArahanFilter && ` ${picFilter ? ', ' : ''}Kategori: ${kategoriArahanFilter}`}
+                </span>
+              )}
+            </h1>
+            {loading && (
+              <div className="flex items-center space-x-1 text-blue-600">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Refreshing...</span>
+              </div>
             )}
-          </h1>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           {(divisionFilter || picFilter || kategoriArahanFilter) && (
@@ -1042,8 +1047,9 @@ const TindakLanjutComponent: React.FC = () => {
                 <button
                   type="submit"
                   className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                  disabled={isSubmitting}
                 >
-                  {editingRow ? "Update" : "Create"}
+                  {isSubmitting ? "Saving..." : (editingRow ? "Update" : "Create")}
                 </button>
                 {!editingRow && (
                   <button

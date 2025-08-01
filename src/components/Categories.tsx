@@ -12,6 +12,7 @@ import {
   Filter,
   Plus as PlusIcon,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 import { CategoryTable, CategoryTableData } from "../types";
 
@@ -62,6 +63,7 @@ const Categories: React.FC = () => {
     categoryName: "",
     description: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getProgressColor = (progress: number, tableIndex?: number) => {
     if (tableIndex !== undefined) {
@@ -158,6 +160,7 @@ const Categories: React.FC = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       if (isEditMode && editingCategory) {
         // Update existing category
@@ -187,6 +190,8 @@ const Categories: React.FC = () => {
     } catch (error) {
       console.error("Failed to save category:", error);
       alert("Gagal menyimpan kategori. Silakan coba lagi.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -242,12 +247,7 @@ const Categories: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm">
         <div className="overflow-hidden">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading data...</p>
-            </div>
-          ) : error ? (
+          {error ? (
             <div className="text-center py-8">
               <div className="text-red-600 mb-4">❌ Error: {error}</div>
               <p className="text-gray-500">Failed to load categories</p>
@@ -259,6 +259,14 @@ const Categories: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-8">
+              {loading && (
+                <div className="flex items-center justify-center py-4">
+                  <div className="flex items-center space-x-2 text-blue-600">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Refreshing data...</span>
+                  </div>
+                </div>
+              )}
               {filteredCategories.map((categoryName) => {
                 // Find the category object from categories array
                 const category = categories.find(cat => cat.categoryName === categoryName);
@@ -546,9 +554,9 @@ const Categories: React.FC = () => {
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  disabled={loading}
+                  disabled={isSubmitting}
                 >
-                  {loading ? "Menyimpan..." : (isEditMode ? "Update Kategori" : "Simpan Kategori")}
+                  {isSubmitting ? "Menyimpan..." : (isEditMode ? "Update Kategori" : "Simpan Kategori")}
                 </button>
                 <button
                   type="button"

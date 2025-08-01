@@ -9,6 +9,7 @@ import {
   Zap,
   Clock,
   PieChart as PieChartIcon,
+  RefreshCw,
 } from "lucide-react";
 import {
   PieChart,
@@ -31,6 +32,7 @@ const Dashboard: React.FC = () => {
     tindakLanjut,
     getCategoryStatsFromTindakLanjut,
     getCategoryStatsByDivision,
+    loading,
   } = useData();
   const { syncData } = useRealTimeSync();
 
@@ -336,9 +338,17 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white rounded-lg p-6 shadow-sm">
         <div className="text-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Progress Pengisian Tindak Lanjut Arahan Strategis
-          </h2>
+          <div className="flex items-center justify-center space-x-2 mb-2">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Progress Pengisian Tindak Lanjut Arahan Strategis
+            </h2>
+            {loading && (
+              <div className="flex items-center space-x-1 text-blue-600">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Refreshing...</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-4 mb-6">
