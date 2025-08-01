@@ -39,6 +39,22 @@ interface DataContextType {
   deleteTindakLanjut: (id: string) => Promise<void>;
   getArahanByDivision: (division: string) => Arahan[];
   getCategoriesByDivision: (division: string) => Category[];
+  getCategoryStatsFromTindakLanjut: (categoryName: string) => {
+    total: number;
+    belumDitindaklanjuti: number;
+    dalamProses: number;
+    selesai: number;
+    selesaiBerkelanjutan: number;
+    progress: number;
+  };
+  getCategoryStatsByDivision: (categoryName: string, division: string) => {
+    total: number;
+    belumDitindaklanjuti: number;
+    dalamProses: number;
+    selesai: number;
+    selesaiBerkelanjutan: number;
+    progress: number;
+  };
   refreshData: () => Promise<void>;
 }
 
@@ -334,6 +350,68 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     return categories;
   };
 
+  // Function to calculate category statistics from tindak_lanjut data
+  const getCategoryStatsFromTindakLanjut = (categoryName: string) => {
+    const tindakLanjutForCategory = tindakLanjut.filter(
+      (tl) => tl.kategoriArahan && tl.kategoriArahan.trim().toLowerCase() === categoryName.trim().toLowerCase()
+    );
+
+    const stats = {
+      total: tindakLanjutForCategory.length,
+      belumDitindaklanjuti: tindakLanjutForCategory.filter(tl => tl.status === 'belum_ditindaklanjuti').length,
+      dalamProses: tindakLanjutForCategory.filter(tl => tl.status === 'dalam_proses').length,
+      selesai: tindakLanjutForCategory.filter(tl => tl.status === 'selesai').length,
+      selesaiBerkelanjutan: tindakLanjutForCategory.filter(tl => tl.status === 'selesai_berkelanjutan').length,
+    };
+
+    // Calculate progress
+    const completed = stats.selesai + stats.selesaiBerkelanjutan;
+    const progress = stats.total > 0 ? Math.round((completed / stats.total) * 100) : 0;
+
+    return {
+      ...stats,
+      progress,
+    };
+  };
+
+  // Function to get category stats by division
+  const getCategoryStatsByDivision = (categoryName: string, division: string) => {
+    const tindakLanjutForCategoryAndDivision = tindakLanjut.filter(
+      (tl) => tl.kategoriArahan && 
+      tl.kategoriArahan.trim().toLowerCase() === categoryName.trim().toLowerCase() && 
+      tl.pic === division
+    );
+
+    console.log(`Stats for ${categoryName} - ${division}:`, {
+      total: tindakLanjutForCategoryAndDivision.length,
+      data: tindakLanjutForCategoryAndDivision.map(tl => ({
+        id: tl.id,
+        kategoriArahan: tl.kategoriArahan,
+        pic: tl.pic,
+        status: tl.status
+      }))
+    });
+
+    const stats = {
+      total: tindakLanjutForCategoryAndDivision.length,
+      belumDitindaklanjuti: tindakLanjutForCategoryAndDivision.filter(tl => tl.status === 'belum_ditindaklanjuti').length,
+      dalamProses: tindakLanjutForCategoryAndDivision.filter(tl => tl.status === 'dalam_proses').length,
+      selesai: tindakLanjutForCategoryAndDivision.filter(tl => tl.status === 'selesai').length,
+      selesaiBerkelanjutan: tindakLanjutForCategoryAndDivision.filter(tl => tl.status === 'selesai_berkelanjutan').length,
+    };
+
+    // Calculate progress
+    const completed = stats.selesai + stats.selesaiBerkelanjutan;
+    const progress = stats.total > 0 ? Math.round((completed / stats.total) * 100) : 0;
+
+    console.log(`Calculated stats for ${categoryName} - ${division}:`, stats);
+
+    return {
+      ...stats,
+      progress,
+    };
+  };
+
   const getTindakLanjut = async () => {
     try {
       const tindakLanjutData = await apiService.getTindakLanjut();
@@ -406,6 +484,8 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     deleteTindakLanjut,
     getArahanByDivision,
     getCategoriesByDivision,
+    getCategoryStatsFromTindakLanjut,
+    getCategoryStatsByDivision,
     refreshData,
   };
 
