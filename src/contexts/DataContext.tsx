@@ -352,8 +352,22 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   // Function to calculate category statistics from tindak_lanjut data
   const getCategoryStatsFromTindakLanjut = (categoryName: string) => {
+    // Find the category from categories array
+    const category = categories.find(cat => cat.categoryName === categoryName);
+    if (!category) {
+      return {
+        total: 0,
+        belumDitindaklanjuti: 0,
+        dalamProses: 0,
+        selesai: 0,
+        selesaiBerkelanjutan: 0,
+        progress: 0,
+      };
+    }
+    
+    // Get tindakLanjut data for this category using categoryId
     const tindakLanjutForCategory = tindakLanjut.filter(
-      (tl) => tl.kategoriArahan && tl.kategoriArahan.trim().toLowerCase() === categoryName.trim().toLowerCase()
+      (tl) => tl.categoryId === category.id
     );
 
     const stats = {
@@ -376,10 +390,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
 
   // Function to get category stats by division
   const getCategoryStatsByDivision = (categoryName: string, division: string) => {
+    // Find the category from categories array
+    const category = categories.find(cat => cat.categoryName === categoryName);
+    if (!category) {
+      return {
+        total: 0,
+        belumDitindaklanjuti: 0,
+        dalamProses: 0,
+        selesai: 0,
+        selesaiBerkelanjutan: 0,
+        progress: 0,
+      };
+    }
+    
     const tindakLanjutForCategoryAndDivision = tindakLanjut.filter(
-      (tl) => tl.kategoriArahan && 
-      tl.kategoriArahan.trim().toLowerCase() === categoryName.trim().toLowerCase() && 
-      tl.pic === division
+      (tl) => tl.categoryId === category.id && tl.pic === division
     );
 
     const stats = {

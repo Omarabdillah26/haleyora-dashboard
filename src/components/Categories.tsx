@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
@@ -41,10 +41,27 @@ const Categories: React.FC = () => {
     getCategoryStatsByDivision,
     loading,
     error,
+    addCategory,
+    refreshData,
+    updateCategory,
+    deleteCategory,
   } = useData();
   const { syncData } = useRealTimeSync();
 
+  // Debug: Log when categories change
+  useEffect(() => {
+    // console.log("Categories updated:", categories);
+  }, [categories]);
+
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    categoryName: "",
+    description: "",
+  });
 
   const getProgressColor = (progress: number, tableIndex?: number) => {
     if (tableIndex !== undefined) {
@@ -81,10 +98,100 @@ const Categories: React.FC = () => {
     navigate(`/tindak-lanjut?${params.toString()}`);
   };
 
-  // Get unique category names from tindak_lanjut
-  const uniqueCategories = Array.from(
-    new Set(tindakLanjut.map(tl => tl.kategoriArahan).filter(Boolean))
-  );
+  const handleAddCategory = () => {
+    setFormData({
+      categoryName: "",
+      description: "",
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsEditMode(false);
+    setEditingCategory(null);
+    setFormData({
+      categoryName: "",
+      description: "",
+    });
+  };
+
+  const handleEditCategory = (categoryName: string) => {
+    // Find the category from categories array
+    const category = categories.find(cat => cat.categoryName === categoryName);
+    if (category) {
+      setEditingCategory(category);
+      setFormData({
+        categoryName: category.categoryName,
+        description: category.description || "",
+      });
+      setIsEditMode(true);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryName: string) => {
+    // Show confirmation first
+    setDeleteConfirm(categoryName);
+  };
+
+  const confirmDeleteCategory = async (categoryName: string) => {
+    // Find the category from categories array
+    const category = categories.find(cat => cat.categoryName === categoryName);
+    if (category) {
+      try {
+        await deleteCategory(category.id);
+        await refreshData();
+        setDeleteConfirm(null);
+      } catch (error) {
+        console.error("Failed to delete category:", error);
+        alert("Gagal menghapus kategori. Silakan coba lagi.");
+      }
+    }
+  };
+
+  const handleSubmitCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.categoryName.trim()) {
+      alert("Nama kategori harus diisi");
+      return;
+    }
+
+    try {
+      if (isEditMode && editingCategory) {
+        // Update existing category
+        await updateCategory(editingCategory.id, {
+          categoryName: formData.categoryName.trim(),
+          description: formData.description.trim() || formData.categoryName.trim(),
+        });
+      } else {
+        // Add new category
+        await addCategory({
+          categoryName: formData.categoryName.trim(),
+          description: formData.description.trim() || formData.categoryName.trim(),
+        });
+      }
+      
+      // Reset form and close modal
+      setFormData({
+        categoryName: "",
+        description: "",
+      });
+      setIsModalOpen(false);
+      setIsEditMode(false);
+      setEditingCategory(null);
+      
+      // Refresh data
+      await refreshData();
+    } catch (error) {
+      console.error("Failed to save category:", error);
+      alert("Gagal menyimpan kategori. Silakan coba lagi.");
+    }
+  };
+
+  // Get unique category names from categories array instead of tindak_lanjut
+  const uniqueCategories = categories.map(cat => cat.categoryName);
 
   const filteredCategories = selectedCategory === "all" 
     ? uniqueCategories 
@@ -115,23 +222,16 @@ const Categories: React.FC = () => {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Semua Kategori</option>
-              {uniqueCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
+              {categories.map((category) => (
+                <option key={category.id} value={category.categoryName}>
+                  {category.categoryName}
                 </option>
               ))}
             </select>
           </div>
 
           <button
-            onClick={() => {
-              // This button is for adding new categories, not editing existing ones.
-              // The modal form handles adding/editing.
-              // For now, we'll just open the modal for adding.
-              // If you want to add a new category directly, you'd need a state for newCategory
-              // and a function to add it to tindakLanjut.
-              // For now, it's just a placeholder for adding.
-            }}
+            onClick={handleAddCategory}
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -160,39 +260,35 @@ const Categories: React.FC = () => {
           ) : (
             <div className="space-y-8">
               {filteredCategories.map((categoryName) => {
-                const categoryTables = tindakLanjut.filter(
-                  (table) => table.kategoriArahan && 
-                  table.kategoriArahan.trim().toLowerCase() === categoryName.trim().toLowerCase()
+                // Find the category object from categories array
+                const category = categories.find(cat => cat.categoryName === categoryName);
+                if (!category) return null;
+                
+                // Get tindakLanjut data for this category using categoryId
+                const categoryTindakLanjut = tindakLanjut.filter(
+                  (table) => table.categoryId === category.id
                 );
                 
                 return (
-                  <div key={categoryName} className="space-y-4">
+                  <div key={category.id} className="space-y-4">
                     {/* Category Header */}
                     <div
                       className={`${getTableColor(
-                        categoryTables.length
+                        categoryTindakLanjut.length
                       )} text-white px-6 py-3 font-semibold text-center flex items-center justify-between`}
                     >
-                      <span className="flex-1">{categoryName}</span>
+                      <span className="flex-1">{category.categoryName}</span>
                       {user?.role === "SUPER_ADMIN" && (
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => {
-                              // This button is for editing existing categories.
-                              // The modal form handles editing.
-                              // For now, it's just a placeholder for editing.
-                            }}
+                            onClick={() => handleEditCategory(category.categoryName)}
                             className="p-1 text-white hover:text-white/80 transition-colors"
                             title="Edit Kategori"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => {
-                              // This button is for deleting existing categories.
-                              // The modal form handles deleting.
-                              // For now, it's just a placeholder for deleting.
-                            }}
+                            onClick={() => handleDeleteCategory(category.categoryName)}
                             className="p-1 text-white hover:text-red-200 transition-colors"
                             title="Hapus Kategori"
                           >
@@ -205,16 +301,16 @@ const Categories: React.FC = () => {
                     {/* Table */}
                     <div
                       className={`overflow-x-auto border-2 ${getTableColor(
-                        categoryTables.length
+                        categoryTindakLanjut.length
                       ).replace("bg-", "border-")} rounded-lg`}
                     >
                       <table className="w-full">
                         <thead>
                           <tr
-                            className={`${getTableColor(categoryTables.length).replace(
+                            className={`${getTableColor(categoryTindakLanjut.length).replace(
                               "500",
                               "100"
-                            )} border-b ${getTableColor(categoryTables.length).replace(
+                            )} border-b ${getTableColor(categoryTindakLanjut.length).replace(
                               "bg-",
                               "border-"
                             )}`}
@@ -257,11 +353,11 @@ const Categories: React.FC = () => {
                                       navigateToTindakLanjut(division, categoryName)
                                     }
                                     className={`flex items-center space-x-2 hover:underline transition-colors ${getTableColor(
-                                      categoryTables.length
+                                      categoryTindakLanjut.length
                                     )
                                       .replace("bg-", "text-")
                                       .replace("500", "600")} hover:${getTableColor(
-                                      categoryTables.length
+                                      categoryTindakLanjut.length
                                     )
                                       .replace("bg-", "text-")
                                       .replace("500", "800")}`}
@@ -291,7 +387,7 @@ const Categories: React.FC = () => {
                                     <span
                                       className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
                                         stats.progress,
-                                        categoryTables.length
+                                        categoryTindakLanjut.length
                                       )}`}
                                     >
                                       {stats.progress}%
@@ -300,7 +396,7 @@ const Categories: React.FC = () => {
                                       <div
                                         className={`h-2 rounded-full ${getProgressColor(
                                           stats.progress,
-                                          categoryTables.length
+                                          categoryTindakLanjut.length
                                         )}`}
                                         style={{ width: `${stats.progress}%` }}
                                       ></div>
@@ -321,11 +417,11 @@ const Categories: React.FC = () => {
                           <table className="w-full mt-4">
                             <tbody>
                               <tr
-                                className={`${getTableColor(categoryTables.length).replace(
+                                className={`${getTableColor(categoryTindakLanjut.length).replace(
                                   "500",
                                   "200"
                                 )} font-semibold border-t ${getTableColor(
-                                  categoryTables.length
+                                  categoryTindakLanjut.length
                                 ).replace("bg-", "border-")}`}
                               >
                                 <td className="py-3 px-4">JUMLAH</td>
@@ -345,14 +441,25 @@ const Categories: React.FC = () => {
                                   {totalStats.selesaiBerkelanjutan}
                                 </td>
                                 <td className="py-3 px-4 text-center">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
-                                      totalStats.progress,
-                                      categoryTables.length
-                                    )}`}
-                                  >
-                                    {totalStats.progress}%
-                                  </span>
+                                  <div className="flex items-center justify-center space-x-2">
+                                    <span
+                                      className={`px-3 py-1 rounded-full text-white text-sm font-medium ${getProgressColor(
+                                        totalStats.progress || 0,
+                                        categoryTindakLanjut.length
+                                      )}`}
+                                    >
+                                      {totalStats.progress || 0}%
+                                    </span>
+                                    <div className="w-16 bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className={`h-2 rounded-full ${getProgressColor(
+                                          totalStats.progress || 0,
+                                          categoryTindakLanjut.length
+                                        )}`}
+                                        style={{ width: `${totalStats.progress || 0}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
                                 </td>
                               </tr>
                             </tbody>
@@ -386,6 +493,105 @@ const Categories: React.FC = () => {
                 Klik ikon edit (✏️) atau hapus (🗑️) di header setiap kategori
                 untuk mengelola data.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Category Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {isEditMode ? "Edit Kategori" : "Tambah Kategori Baru"}
+              </h3>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitCategory} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Kategori *
+                </label>
+                <input
+                  type="text"
+                  value={formData.categoryName}
+                  onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Masukkan nama kategori"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Deskripsi
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Masukkan deskripsi kategori (opsional)"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={loading}
+                >
+                  {loading ? "Menyimpan..." : (isEditMode ? "Update Kategori" : "Simpan Kategori")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Batal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Konfirmasi Hapus
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Apakah Anda yakin ingin menghapus kategori "{deleteConfirm}"?
+              <br />
+              <span className="text-sm text-red-600">
+                Tindakan ini tidak dapat dibatalkan.
+              </span>
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  confirmDeleteCategory(deleteConfirm);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Hapus
+              </button>
             </div>
           </div>
         </div>

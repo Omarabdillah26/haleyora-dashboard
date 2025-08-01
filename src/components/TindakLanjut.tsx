@@ -610,83 +610,89 @@ const TindakLanjutComponent: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                currentTindakLanjut.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {row.kategoriArahan}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
-                      <div className="max-w-xs">
-                        {row.detailArahan || "Tidak ada detail"}
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {row.pic}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {row.target
-                        ? new Date(row.target).toLocaleDateString(
-                            "en-GB",
-                            {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            }
-                          )
-                        : "Tidak ada target"}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(row.status || "belum_ditindaklanjuti")}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
-                      <div className="max-w-xs">
-                        {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {row.fileAttachment && row.fileAttachment !== "[]" ? (
-                        <div className="flex items-center space-x-1">
-                          <Paperclip className="w-4 h-4 text-gray-500" />
-                          <span className="text-xs text-gray-600">
-                            {(() => {
-                              try {
-                                const files = JSON.parse(row.fileAttachment);
-                                return `${files.length} file(s)`;
-                              } catch {
-                                return "0 file(s)";
-                              }
-                            })()}
-                          </span>
+                currentTindakLanjut.map((row) => {
+                  // Find category name from categories array
+                  const category = categories.find(cat => cat.id === row.categoryId);
+                  const categoryName = category ? category.categoryName : row.kategoriArahan || "Unknown Category";
+                  
+                  return (
+                    <tr
+                      key={row.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {categoryName}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
+                        <div className="max-w-xs">
+                          {row.detailArahan || "Tidak ada detail"}
                         </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">No files</span>
-                      )}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(row)}
-                          className="text-blue-600 hover:text-blue-900 transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setDeleteConfirm(row.id)
-                          }
-                          className="text-red-600 hover:text-red-900 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {row.pic}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {row.target
+                          ? new Date(row.target).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            )
+                          : "Tidak ada target"}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(row.status || "belum_ditindaklanjuti")}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
+                        <div className="max-w-xs">
+                          {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
+                        </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {row.fileAttachment && row.fileAttachment !== "[]" ? (
+                          <div className="flex items-center space-x-1">
+                            <Paperclip className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs text-gray-600">
+                              {(() => {
+                                try {
+                                  const files = JSON.parse(row.fileAttachment);
+                                  return `${files.length} file(s)`;
+                                } catch {
+                                  return "0 file(s)";
+                                }
+                              })()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">No files</span>
+                        )}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEdit(row)}
+                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              setDeleteConfirm(row.id)
+                            }
+                            className="text-red-600 hover:text-red-900 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

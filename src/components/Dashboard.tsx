@@ -28,15 +28,11 @@ const Dashboard: React.FC = () => {
     categories,
     getCategoriesByDivision,
     categoryTables,
+    tindakLanjut,
+    getCategoryStatsFromTindakLanjut,
+    getCategoryStatsByDivision,
   } = useData();
   const { syncData } = useRealTimeSync();
-
-  // Debug: Log available data
-  console.log("Dashboard Debug Info:");
-  console.log("User:", user);
-  console.log("Categories:", categories);
-  console.log("Category Tables:", categoryTables);
-  console.log("Arahan:", arahan);
 
   const [selectedDivision, setSelectedDivision] = useState(
     user?.role === "SUPER_ADMIN" ? "BOD-1" : user?.role || ""
@@ -177,11 +173,6 @@ const Dashboard: React.FC = () => {
 
   // Generate pie chart data from category tables
   const generateCategoryTablePieChartData = (categoryTable: CategoryTable) => {
-    console.log(
-      `Generating pie chart for ${categoryTable.categoryName}:`,
-      categoryTable.tableData
-    );
-
     const divisionData = categoryTable.tableData
       .filter((data) => data.jumlah > 0) // Only include data with valid jumlah
       .map((data) => {
@@ -190,9 +181,6 @@ const Dashboard: React.FC = () => {
           typeof data.progress === "string"
             ? parseFloat(data.progress)
             : data.progress || 0;
-        console.log(
-          `Division ${data.division}: progress=${progress}, jumlah=${data.jumlah}`
-        );
         return {
           name: data.division,
           value: progress, // Progress percentage for pie chart
@@ -226,11 +214,53 @@ const Dashboard: React.FC = () => {
       });
     }
 
-    console.log(
-      `Generated pie data for ${categoryTable.categoryName}:`,
-      divisionData
-    );
     return divisionData;
+  };
+
+  // Generate pie chart data from tindakLanjut data
+  const generateTindakLanjutPieChartData = (categoryName: string) => {
+    // Find the category from categories array
+    const category = categories.find(cat => cat.categoryName === categoryName);
+    if (!category) {
+      return [];
+    }
+    
+    // Get tindakLanjut data for this category using categoryId
+    const categoryTindakLanjut = tindakLanjut.filter(
+      (tl) => tl.categoryId === category.id
+    );
+    
+    // Group by division and calculate stats
+    const divisionStats = divisions.map((division) => {
+      const divisionTindakLanjut = categoryTindakLanjut.filter(
+        (tl) => tl.pic === division
+      );
+      
+      const stats = {
+        total: divisionTindakLanjut.length,
+        selesai: divisionTindakLanjut.filter(tl => tl.status === 'selesai').length,
+        selesaiBerkelanjutan: divisionTindakLanjut.filter(tl => tl.status === 'selesai_berkelanjutan').length,
+        dalamProses: divisionTindakLanjut.filter(tl => tl.status === 'dalam_proses').length,
+        belumDitindaklanjuti: divisionTindakLanjut.filter(tl => tl.status === 'belum_ditindaklanjuti').length,
+      };
+      
+      // Calculate progress
+      const completed = stats.selesai + stats.selesaiBerkelanjutan;
+      const progress = stats.total > 0 ? Math.round((completed / stats.total) * 100) : 0;
+      
+      return {
+        name: division,
+        value: progress,
+        total: stats.total,
+        selesai: stats.selesai,
+        selesaiBerkelanjutan: stats.selesaiBerkelanjutan,
+        proses: stats.dalamProses,
+        belumDitindaklanjuti: stats.belumDitindaklanjuti,
+        color: COLORS[divisions.indexOf(division) % COLORS.length],
+      };
+    }).filter((item) => item.total > 0); // Only include divisions with data
+    
+    return divisionStats;
   };
 
   const pieChartData = generatePieChartData("all");
@@ -319,12 +349,14 @@ const Dashboard: React.FC = () => {
               onChange={(e) => setSelectedTable(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">Semua Tabel</option>
-              {categoryTables.map((table) => (
-                <option key={table.id} value={table.id}>
-                  {table.categoryName}
-                </option>
-              ))}
+              <option value="all">Semua Kategori</option>
+              {categories
+                .filter(category => tindakLanjut.some(tl => tl.categoryId === category.id))
+                .map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.categoryName}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -336,13 +368,7 @@ const Dashboard: React.FC = () => {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Semua Divisi</option>
-              {Array.from(
-                new Set(
-                  categoryTables.flatMap((table) =>
-                    table.tableData.map((data) => data.division)
-                  )
-                )
-              ).map((division) => (
+              {divisions.map((division) => (
                 <option key={division} value={division}>
                   {division}
                 </option>
@@ -416,21 +442,18 @@ const Dashboard: React.FC = () => {
         </div> */}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {categoryTables
-            .filter(
-              (table) => selectedTable === "all" || table.id === selectedTable
-            )
-            .map((table) => {
-              const pieData = generateCategoryTablePieChartData(table).filter(
+          {categories
+            .filter((category) => {
+              // Only show categories that have tindakLanjut data
+              const hasTindakLanjut = tindakLanjut.some(tl => tl.categoryId === category.id);
+              return hasTindakLanjut && (selectedTable === "all" || category.id === selectedTable);
+            })
+            .map((category) => {
+              const pieData = generateTindakLanjutPieChartData(category.categoryName).filter(
                 (data) =>
                   selectedDivisionFilter === "all" ||
                   data.name === selectedDivisionFilter
               );
-
-              // Debug info
-              console.log(`Table: ${table.categoryName}`);
-              console.log(`Raw table data:`, table.tableData);
-              console.log(`Generated pie data:`, pieData);
 
               const totalProgress =
                 pieData.length > 0
@@ -444,12 +467,12 @@ const Dashboard: React.FC = () => {
 
               return (
                 <div
-                  key={table.id}
+                  key={category.id}
                   className="bg-gray-50 rounded-lg p-4 border border-gray-200"
                 >
                   <div className="text-center mb-4">
                     <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                      {table.categoryName}
+                      {category.categoryName}
                     </h4>
                     <div className="flex items-center justify-center space-x-2">
                       <div className="text-2xl font-bold text-gray-900">
@@ -460,17 +483,12 @@ const Dashboard: React.FC = () => {
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {table.description}
+                      {category.description}
                     </p>
                   </div>
 
                   {pieData.length > 0 ? (
-                    <div className="h-64">
-                      {/* Debug info */}
-                      {/* <div className="text-xs text-gray-500 mb-2">
-                        Debug: {pieData.length} items, values: {pieData.map(d => d.value).join(', ')}
-                      </div> */}
-
+                    <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -478,7 +496,6 @@ const Dashboard: React.FC = () => {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={({ name, value }) => `${name}: ${value}%`}
                             outerRadius={60}
                             fill="#8884d8"
                             dataKey="value"
@@ -489,10 +506,15 @@ const Dashboard: React.FC = () => {
                           </Pie>
                           <Tooltip content={<CustomTooltip />} />
                           <Legend
-                            layout="horizontal"
-                            verticalAlign="bottom"
-                            align="center"
-                            wrapperStyle={{ fontSize: "12px" }}
+                            layout="vertical"
+                            verticalAlign="middle"
+                            align="right"
+                            wrapperStyle={{ fontSize: "11px", paddingLeft: "10px" }}
+                            formatter={(value, entry) => (
+                              <span style={{ color: entry.color }}>
+                                {value}: {entry.payload?.value || 0}%
+                              </span>
+                            )}
                           />
                         </PieChart>
                       </ResponsiveContainer>

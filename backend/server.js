@@ -1137,10 +1137,10 @@ app.post("/api/create-tindak-lanjut-table", async (req, res) => {
     // Insert sample data
     await pool.execute(`
       INSERT INTO tindak_lanjut (id, kategoriArahan, detailArahan, pic, target, status, deskripsiTindakLanjut, catatanSekretaris, categoryId, division, fileAttachment) VALUES
-      ('tl-1', 'Proyek Digital', 'Implementasi sistem digital untuk meningkatkan efisiensi kerja', 'BOD-1', '2025-12-31', 'dalam_proses', 'Sistem sedang dalam tahap pengembangan', 'Progress sesuai timeline', NULL, 'BOD-1', NULL),
-      ('tl-2', 'Optimasi Proses', 'Optimasi proses bisnis untuk meningkatkan produktivitas', 'VP OP', '2025-10-31', 'selesai', 'Proses optimasi telah selesai dan berjalan dengan baik', 'Proyek berhasil diselesaikan tepat waktu', NULL, 'VP OP', NULL),
-      ('tl-3', 'Pelatihan', 'Program pelatihan untuk meningkatkan skill karyawan', 'VP AGA', '2025-06-30', 'selesai_berkelanjutan', 'Program pelatihan berkelanjutan untuk maintenance skill', 'Program berjalan dengan baik dan perlu dilanjutkan', NULL, 'VP AGA', NULL),
-      ('tl-4', 'Audit Internal', 'Audit internal untuk memastikan compliance', 'SEKPER', '2025-03-31', 'belum_ditindaklanjuti', 'Belum dimulai, menunggu approval dari management', 'Perlu koordinasi dengan tim audit', NULL, 'SEKPER', NULL)
+      ('tl-1', 'Proyek Digital', 'Implementasi sistem digital untuk meningkatkan efisiensi kerja', 'BOD-1', '2025-12-31', 'dalam_proses', 'Sistem sedang dalam tahap pengembangan', 'Progress sesuai timeline', 'cat-1', 'BOD-1', NULL),
+      ('tl-2', 'Optimasi Proses', 'Optimasi proses bisnis untuk meningkatkan produktivitas', 'VP OP', '2025-10-31', 'selesai', 'Proses optimasi telah selesai dan berjalan dengan baik', 'Proyek berhasil diselesaikan tepat waktu', 'cat-2', 'VP OP', NULL),
+      ('tl-3', 'Pelatihan', 'Program pelatihan untuk meningkatkan skill karyawan', 'VP AGA', '2025-06-30', 'selesai_berkelanjutan', 'Program pelatihan berkelanjutan untuk maintenance skill', 'Program berjalan dengan baik dan perlu dilanjutkan', 'cat-3', 'VP AGA', NULL),
+      ('tl-4', 'Audit Internal', 'Audit internal untuk memastikan compliance', 'SEKPER', '2025-03-31', 'belum_ditindaklanjuti', 'Belum dimulai, menunggu approval dari management', 'Perlu koordinasi dengan tim audit', 'cat-1', 'SEKPER', NULL)
     `);
     
     res.json({
