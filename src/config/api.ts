@@ -16,16 +16,7 @@ export const getApiUrl = () => {
     return API_CONFIG.DEV_URL;
   }
   
-  // For production, try CORS proxy first, fallback to direct HTTP
-  // This avoids ad blocker issues with Netlify functions
-  const corsProxyUrl = "https://cors-anywhere.herokuapp.com/http://160.250.227.12:2134/api";
-  
-  // Check if we're in a secure context (HTTPS)
-  const isSecureContext = window.isSecureContext || window.location.protocol === 'https:';
-  
-  if (isSecureContext) {
-    return corsProxyUrl;
-  }
-  
+  // For production, use direct API call
+  // We'll handle mixed content issues in the API service
   return API_CONFIG.PROD_URL;
 }; 

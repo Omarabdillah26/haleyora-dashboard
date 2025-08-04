@@ -7,60 +7,44 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     console.log(`Making API call to: ${API_BASE_URL}${endpoint}`);
 
-    // Check if we're using the CORS proxy
-    const isUsingProxy = API_BASE_URL.includes("cors-anywhere.herokuapp.com");
+    // Check if we're in a secure context (HTTPS)
+    const isSecureContext = window.isSecureContext || window.location.protocol === 'https:';
     
-    if (isUsingProxy) {
-      // Use the CORS proxy - direct API call
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-        ...options,
-      });
-
-      console.log(`Proxy response status: ${response.status}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Proxy error response:', errorText);
-        throw new Error(`Proxy request failed: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } else {
-      // Use direct API call
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-        ...options,
-      });
-
-      console.log(`Response status: ${response.status}`);
-      console.log(`Response headers:`, response.headers);
-
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error(`Non-JSON response from ${endpoint}:`, text);
-        throw new Error(
-          `Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`
-        );
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return data;
+    if (isSecureContext) {
+      // For HTTPS environments, we need to handle mixed content
+      // We'll use a different approach - direct API call with proper error handling
+      console.warn('Making HTTP request from HTTPS page. This may be blocked by the browser.');
     }
+
+    // Use direct API call
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    console.log(`Response status: ${response.status}`);
+    console.log(`Response headers:`, response.headers);
+
+    // Check if response is JSON
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error(`Non-JSON response from ${endpoint}:`, text);
+      throw new Error(
+        `Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
   } catch (error) {
     console.error(`API call failed for ${endpoint}:`, error);
     throw error;
@@ -197,12 +181,11 @@ export const uploadFiles = async (files: File[]) => {
     formData.append("files", file);
   });
 
-  // For file uploads, we need to handle the mixed content issue
-  // Since FormData can't go through CORS proxy easily, we'll use a different approach
+  // Check if we're in a secure context (HTTPS)
   const isSecureContext = window.isSecureContext || window.location.protocol === 'https:';
   
   if (isSecureContext) {
-    // For HTTPS, we'll use a different approach - convert files to base64 and send as JSON
+    // For HTTPS environments, convert files to base64 and send as JSON
     const filePromises = Array.from(files).map(async (file) => {
       return new Promise<{name: string, data: string, type: string}>((resolve) => {
         const reader = new FileReader();
@@ -220,7 +203,7 @@ export const uploadFiles = async (files: File[]) => {
 
     const fileData = await Promise.all(filePromises);
     
-    // Send as JSON through the CORS proxy
+    // Send as JSON
     const response = await fetch(`${API_BASE_URL}/upload-files-base64`, {
       method: "POST",
       headers: {
@@ -236,7 +219,7 @@ export const uploadFiles = async (files: File[]) => {
     const result = await response.json();
     return result.data;
   } else {
-    // For HTTP, use direct API call
+    // For HTTP environments, use direct FormData upload
     const response = await fetch(`${API_BASE_URL}/upload-files`, {
       method: "POST",
       body: formData,

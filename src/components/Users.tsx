@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
 import { useRealTimeSync } from "../hooks/useRealTimeSync";
+import { getApiUrl } from "../config/api";
 import {
   Plus,
   Edit,
@@ -73,7 +74,8 @@ const Users: React.FC = () => {
   // Fetch users from API
   const fetchUsers = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/users");
+      const API_BASE_URL = getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/users`);
       if (response.ok) {
         const data = await response.json();
         setUsers(data.data || []);
@@ -113,8 +115,9 @@ const Users: React.FC = () => {
 
   const handleDelete = async (userId: string) => {
     try {
+      const API_BASE_URL = getApiUrl();
       const response = await fetch(
-        `http://localhost:3001/api/users/${userId}`,
+        `${API_BASE_URL}/users/${userId}`,
         {
           method: "DELETE",
         }
@@ -154,9 +157,10 @@ const Users: React.FC = () => {
     }
 
     try {
+      const API_BASE_URL = getApiUrl();
       const url = editingUser
-        ? `http://localhost:3001/api/users/${editingUser.id}`
-        : "http://localhost:3001/api/users";
+        ? `${API_BASE_URL}/users/${editingUser.id}`
+        : `${API_BASE_URL}/users`;
 
       const method = editingUser ? "PUT" : "POST";
 
