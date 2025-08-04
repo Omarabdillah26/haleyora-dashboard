@@ -7,34 +7,62 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     console.log(`Making API call to: ${API_BASE_URL}${endpoint}`);
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    });
+    // Check if we're using the Netlify function proxy
+    const isUsingProxy = API_BASE_URL === "/.netlify/functions/api-proxy";
+    
+    if (isUsingProxy) {
+      // Use the Netlify function proxy
+      const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path: endpoint,
+          method: options.method || "GET",
+          body: options.body,
+          headers: options.headers
+        }),
+      });
 
-    console.log(`Response status: ${response.status}`);
-    console.log(`Response headers:`, response.headers);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
 
-    // Check if response is JSON
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      const text = await response.text();
-      console.error(`Non-JSON response from ${endpoint}:`, text);
-      throw new Error(
-        `Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`
-      );
+      return data;
+    } else {
+      // Use direct API call
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+        ...options,
+      });
+
+      console.log(`Response status: ${response.status}`);
+      console.log(`Response headers:`, response.headers);
+
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error(`Non-JSON response from ${endpoint}:`, text);
+        throw new Error(
+          `Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return data;
     }
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
-    }
-
-    return data;
   } catch (error) {
     console.error(`API call failed for ${endpoint}:`, error);
     throw error;

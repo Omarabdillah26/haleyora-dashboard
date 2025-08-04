@@ -46,28 +46,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     try {
       const API_BASE_URL = getApiUrl();
-      const response = await fetch(`${API_BASE_URL}/users/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      });
+      const isUsingProxy = API_BASE_URL === "/.netlify/functions/api-proxy";
+      
+      if (isUsingProxy) {
+        // Use the Netlify function proxy
+        const response = await fetch(API_BASE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            path: "/users/login",
+            method: "POST",
+            body: JSON.stringify({ username, password })
+          }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (data.success) {
-        const userData: User = {
-          id: data.data.id,
-          username: data.data.username,
-          password: "", // Empty password for security
-          role: data.data.role,
-          name: data.data.name,
-        };
-        setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
+        if (data.success) {
+          const userData: User = {
+            id: data.data.id,
+            username: data.data.username,
+            password: "", // Empty password for security
+            role: data.data.role,
+            name: data.data.name,
+          };
+          setUser(userData);
+          localStorage.setItem("user", JSON.stringify(userData));
+        } else {
+          throw new Error(data.message || "Login failed");
+        }
       } else {
-        throw new Error(data.message || "Login failed");
+        // Use direct API call
+        const response = await fetch(`${API_BASE_URL}/users/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const userData: User = {
+            id: data.data.id,
+            username: data.data.username,
+            password: "", // Empty password for security
+            role: data.data.role,
+            name: data.data.name,
+          };
+          setUser(userData);
+          localStorage.setItem("user", JSON.stringify(userData));
+        } else {
+          throw new Error(data.message || "Login failed");
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
