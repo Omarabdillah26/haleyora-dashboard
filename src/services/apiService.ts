@@ -1,4 +1,6 @@
-const API_BASE_URL = "http://localhost:3001/api";
+import { getApiUrl } from "../config/api";
+
+const API_BASE_URL = getApiUrl();
 
 // Generic API call function
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {

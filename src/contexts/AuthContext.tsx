@@ -6,6 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import { User } from "../types";
+import { getApiUrl } from "../config/api";
 
 interface AuthContextType {
   user: User | null;
@@ -44,7 +45,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string) => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/api/users/login", {
+      const API_BASE_URL = getApiUrl();
+      const response = await fetch(`${API_BASE_URL}/users/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
