@@ -98,7 +98,7 @@
 #### **Fitur:**
 
 - Login system dengan role-based access
-- User management (BOD-1, KSPI, SEKPER, VP AGA, VP KEU, VP OP, SUPER_ADMIN)
+- User management (BOD-1, KSPI, SEKPER, VP AGA, VP KEU, VP OP, VP REN, VP MHC, MAN HK, MAN MR, SUPER_ADMIN)
 - Protected routes
 - Session management
 

@@ -67,6 +67,10 @@ INSERT INTO users (id, username, password, role, name) VALUES
 ('4', 'vpaga', '123456', 'VP AGA', 'VP Administrasi & Governance Affairs'),
 ('5', 'vpkeu', '123456', 'VP KEU', 'VP Keuangan'),
 ('6', 'vpop', '123456', 'VP OP', 'VP Operasi'),
+('8', 'vpren', '123456', 'VP REN', 'VP Renovasi'),
+('9', 'vpmhc', '123456', 'VP MHC', 'VP Manajemen & Human Capital'),
+('10', 'manhk', '123456', 'MAN HK', 'Manajer Human Capital'),
+('11', 'manmr', '123456', 'MAN MR', 'Manajer Marketing'),
 ('7', 'admin', '123456', 'SUPER_ADMIN', 'Super Administrator');
 
 -- Insert sample categories

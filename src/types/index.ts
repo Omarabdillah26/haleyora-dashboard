@@ -9,6 +9,10 @@ export interface User {
     | "VP AGA"
     | "VP KEU"
     | "VP OP"
+    | "VP REN"
+    | "VP MHC"
+    | "MAN HK"
+    | "MAN MR"
     | "SUPER_ADMIN";
   name: string;
 }

@@ -28,6 +28,10 @@ const roles = [
   "VP AGA",
   "VP KEU",
   "VP OP",
+  "VP REN",
+  "VP MHC",
+  "MAN HK",
+  "MAN MR",
   "SUPER_ADMIN",
 ];
 
@@ -169,7 +173,7 @@ const Users: React.FC = () => {
         handleCloseModal();
       } else {
         const errorData = await response.json();
-        alert(`Failed to save user: ${errorData.message || 'Unknown error'}`);
+        alert(`Failed to save user: ${errorData.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Failed to save user:", error);
@@ -217,6 +221,10 @@ const Users: React.FC = () => {
       "VP AGA": "bg-orange-100 text-orange-800",
       "VP KEU": "bg-yellow-100 text-yellow-800",
       "VP OP": "bg-indigo-100 text-indigo-800",
+      "VP REN": "bg-pink-100 text-pink-800",
+      "VP MHC": "bg-teal-100 text-teal-800",
+      "MAN HK": "bg-cyan-100 text-cyan-800",
+      "MAN MR": "bg-emerald-100 text-emerald-800",
     };
 
     return (
@@ -337,24 +345,28 @@ const Users: React.FC = () => {
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                                             <button
-                         onClick={() => setDeleteConfirm(user.id)}
-                         className={`${
-                           user.id === currentUser?.id || user.role === "SUPER_ADMIN"
-                             ? "text-gray-400 cursor-not-allowed"
-                             : "text-red-600 hover:text-red-900"
-                         }`}
-                         disabled={user.id === currentUser?.id || user.role === "SUPER_ADMIN"}
-                         title={
-                           user.id === currentUser?.id
-                             ? "Cannot delete yourself"
-                             : user.role === "SUPER_ADMIN"
-                             ? "Cannot delete SUPER_ADMIN users"
-                             : "Delete user"
-                         }
-                       >
-                         <Trash2 className="w-4 h-4" />
-                       </button>
+                      <button
+                        onClick={() => setDeleteConfirm(user.id)}
+                        className={`${
+                          user.id === currentUser?.id ||
+                          user.role === "SUPER_ADMIN"
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-red-600 hover:text-red-900"
+                        }`}
+                        disabled={
+                          user.id === currentUser?.id ||
+                          user.role === "SUPER_ADMIN"
+                        }
+                        title={
+                          user.id === currentUser?.id
+                            ? "Cannot delete yourself"
+                            : user.role === "SUPER_ADMIN"
+                            ? "Cannot delete SUPER_ADMIN users"
+                            : "Delete user"
+                        }
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>

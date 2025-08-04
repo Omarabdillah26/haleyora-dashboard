@@ -66,6 +66,10 @@ Sistem mendukung role berikut:
 - **VP AGA** - VP Administrasi & Governance Affairs
 - **VP KEU** - VP Keuangan
 - **VP OP** - VP Operasi
+- **VP REN** - VP Renovasi
+- **VP MHC** - VP Manajemen & Human Capital
+- **MAN HK** - Manajer Human Capital
+- **MAN MR** - Manajer Marketing
 - **SUPER_ADMIN** - Super Administrator
 
 ---

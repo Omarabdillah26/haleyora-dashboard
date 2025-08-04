@@ -1204,6 +1204,93 @@ app.get("/api/test-tindak-lanjut-table", async (req, res) => {
   }
 });
 
+// File download endpoint
+app.get("/api/download/:filename", (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(uploadsDir, filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: "File not found"
+      });
+    }
+    
+    // Get file stats
+    const stats = fs.statSync(filePath);
+    
+    // Set headers for download
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', stats.size);
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error("Error downloading file:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error downloading file",
+      error: error.message
+    });
+  }
+});
+
+// File view endpoint
+app.get("/api/view/:filename", (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(uploadsDir, filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: "File not found"
+      });
+    }
+    
+    // Get file extension
+    const ext = path.extname(filename).toLowerCase();
+    
+    // Set appropriate content type based on file extension
+    let contentType = 'application/octet-stream';
+    if (ext === '.pdf') {
+      contentType = 'application/pdf';
+    } else if (ext === '.jpg' || ext === '.jpeg') {
+      contentType = 'image/jpeg';
+    } else if (ext === '.png') {
+      contentType = 'image/png';
+    } else if (ext === '.gif') {
+      contentType = 'image/gif';
+    } else if (ext === '.txt') {
+      contentType = 'text/plain';
+    } else if (ext === '.doc' || ext === '.docx') {
+      contentType = 'application/msword';
+    } else if (ext === '.xls' || ext === '.xlsx') {
+      contentType = 'application/vnd.ms-excel';
+    }
+    
+    // Set headers for viewing
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error("Error viewing file:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error viewing file",
+      error: error.message
+    });
+  }
+});
+
 // Server status endpoint
 app.get("/api/server-status", async (req, res) => {
   try {

@@ -45,7 +45,18 @@ const Dashboard: React.FC = () => {
   const [selectedDivisionFilter, setSelectedDivisionFilter] =
     useState<string>("all");
 
-  const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
+  const divisions = [
+    "BOD-1",
+    "KSPI",
+    "SEKPER",
+    "VP AGA",
+    "VP KEU",
+    "VP OP",
+    "VP REN",
+    "VP MHC",
+    "MAN HK",
+    "MAN MR",
+  ];
 
   const currentArahan =
     user?.role === "SUPER_ADMIN"
@@ -54,37 +65,67 @@ const Dashboard: React.FC = () => {
 
   const stats: DashboardStats = {
     totalArahan: tindakLanjut
-      .filter((item) => selectedTable === "all" || 
-        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
-      .filter((item) =>
-        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      .filter(
+        (item) =>
+          selectedTable === "all" ||
+          categories.find((cat) => cat.categoryName === selectedTable)?.id ===
+            item.categoryId
+      )
+      .filter(
+        (item) =>
+          selectedDivisionFilter === "all" ||
+          item.pic === selectedDivisionFilter
       ).length,
     selesai: tindakLanjut
-      .filter((item) => selectedTable === "all" || 
-        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
-      .filter((item) =>
-        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      .filter(
+        (item) =>
+          selectedTable === "all" ||
+          categories.find((cat) => cat.categoryName === selectedTable)?.id ===
+            item.categoryId
+      )
+      .filter(
+        (item) =>
+          selectedDivisionFilter === "all" ||
+          item.pic === selectedDivisionFilter
       )
       .filter((item) => item.status === "selesai").length,
     selesaiBerkelanjutan: tindakLanjut
-      .filter((item) => selectedTable === "all" || 
-        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
-      .filter((item) =>
-        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      .filter(
+        (item) =>
+          selectedTable === "all" ||
+          categories.find((cat) => cat.categoryName === selectedTable)?.id ===
+            item.categoryId
+      )
+      .filter(
+        (item) =>
+          selectedDivisionFilter === "all" ||
+          item.pic === selectedDivisionFilter
       )
       .filter((item) => item.status === "selesai_berkelanjutan").length,
     dalamProses: tindakLanjut
-      .filter((item) => selectedTable === "all" || 
-        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
-      .filter((item) =>
-        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      .filter(
+        (item) =>
+          selectedTable === "all" ||
+          categories.find((cat) => cat.categoryName === selectedTable)?.id ===
+            item.categoryId
+      )
+      .filter(
+        (item) =>
+          selectedDivisionFilter === "all" ||
+          item.pic === selectedDivisionFilter
       )
       .filter((item) => item.status === "dalam_proses").length,
     belumDitindaklanjuti: tindakLanjut
-      .filter((item) => selectedTable === "all" || 
-        (categories.find(cat => cat.categoryName === selectedTable)?.id === item.categoryId))
-      .filter((item) =>
-        selectedDivisionFilter === "all" || item.pic === selectedDivisionFilter
+      .filter(
+        (item) =>
+          selectedTable === "all" ||
+          categories.find((cat) => cat.categoryName === selectedTable)?.id ===
+            item.categoryId
+      )
+      .filter(
+        (item) =>
+          selectedDivisionFilter === "all" ||
+          item.pic === selectedDivisionFilter
       )
       .filter((item) => item.status === "belum_ditindaklanjuti").length,
   };
@@ -199,46 +240,58 @@ const Dashboard: React.FC = () => {
   // Generate pie chart data from tindakLanjut data
   const generateTindakLanjutPieChartData = (categoryName: string) => {
     // Find the category from categories array
-    const category = categories.find(cat => cat.categoryName === categoryName);
+    const category = categories.find(
+      (cat) => cat.categoryName === categoryName
+    );
     if (!category) {
       return [];
     }
-    
+
     // Get tindakLanjut data for this category using categoryId
     const categoryTindakLanjut = tindakLanjut.filter(
       (tl) => tl.categoryId === category.id
     );
-    
+
     // Group by division and calculate stats
-    const divisionStats = divisions.map((division) => {
-      const divisionTindakLanjut = categoryTindakLanjut.filter(
-        (tl) => tl.pic === division
-      );
-      
-      const stats = {
-        total: divisionTindakLanjut.length,
-        selesai: divisionTindakLanjut.filter(tl => tl.status === 'selesai').length,
-        selesaiBerkelanjutan: divisionTindakLanjut.filter(tl => tl.status === 'selesai_berkelanjutan').length,
-        dalamProses: divisionTindakLanjut.filter(tl => tl.status === 'dalam_proses').length,
-        belumDitindaklanjuti: divisionTindakLanjut.filter(tl => tl.status === 'belum_ditindaklanjuti').length,
-      };
-      
-      // Calculate progress
-      const completed = stats.selesai + stats.selesaiBerkelanjutan;
-      const progress = stats.total > 0 ? Math.round((completed / stats.total) * 100) : 0;
-      
-      return {
-        name: division,
-        value: progress,
-        total: stats.total,
-        selesai: stats.selesai,
-        selesaiBerkelanjutan: stats.selesaiBerkelanjutan,
-        proses: stats.dalamProses,
-        belumDitindaklanjuti: stats.belumDitindaklanjuti,
-        color: COLORS[divisions.indexOf(division) % COLORS.length],
-      };
-    }).filter((item) => item.total > 0); // Only include divisions with data
-    
+    const divisionStats = divisions
+      .map((division) => {
+        const divisionTindakLanjut = categoryTindakLanjut.filter(
+          (tl) => tl.pic === division
+        );
+
+        const stats = {
+          total: divisionTindakLanjut.length,
+          selesai: divisionTindakLanjut.filter((tl) => tl.status === "selesai")
+            .length,
+          selesaiBerkelanjutan: divisionTindakLanjut.filter(
+            (tl) => tl.status === "selesai_berkelanjutan"
+          ).length,
+          dalamProses: divisionTindakLanjut.filter(
+            (tl) => tl.status === "dalam_proses"
+          ).length,
+          belumDitindaklanjuti: divisionTindakLanjut.filter(
+            (tl) => tl.status === "belum_ditindaklanjuti"
+          ).length,
+        };
+
+        // Calculate progress
+        const completed = stats.selesai + stats.selesaiBerkelanjutan;
+        const progress =
+          stats.total > 0 ? Math.round((completed / stats.total) * 100) : 0;
+
+        return {
+          name: division,
+          value: progress,
+          total: stats.total,
+          selesai: stats.selesai,
+          selesaiBerkelanjutan: stats.selesaiBerkelanjutan,
+          proses: stats.dalamProses,
+          belumDitindaklanjuti: stats.belumDitindaklanjuti,
+          color: COLORS[divisions.indexOf(division) % COLORS.length],
+        };
+      })
+      .filter((item) => item.total > 0); // Only include divisions with data
+
     return divisionStats;
   };
 
@@ -346,7 +399,9 @@ const Dashboard: React.FC = () => {
             >
               <option value="all">Semua Kategori</option>
               {categories
-                .filter(category => tindakLanjut.some(tl => tl.categoryId === category.id))
+                .filter((category) =>
+                  tindakLanjut.some((tl) => tl.categoryId === category.id)
+                )
                 .map((category) => (
                   <option key={category.id} value={category.categoryName}>
                     {category.categoryName}
@@ -440,11 +495,19 @@ const Dashboard: React.FC = () => {
           {categories
             .filter((category) => {
               // Only show categories that have tindakLanjut data
-              const hasTindakLanjut = tindakLanjut.some(tl => tl.categoryId === category.id);
-              return hasTindakLanjut && (selectedTable === "all" || category.categoryName === selectedTable);
+              const hasTindakLanjut = tindakLanjut.some(
+                (tl) => tl.categoryId === category.id
+              );
+              return (
+                hasTindakLanjut &&
+                (selectedTable === "all" ||
+                  category.categoryName === selectedTable)
+              );
             })
             .map((category) => {
-              const pieData = generateTindakLanjutPieChartData(category.categoryName).filter(
+              const pieData = generateTindakLanjutPieChartData(
+                category.categoryName
+              ).filter(
                 (data) =>
                   selectedDivisionFilter === "all" ||
                   data.name === selectedDivisionFilter
@@ -504,7 +567,10 @@ const Dashboard: React.FC = () => {
                             layout="vertical"
                             verticalAlign="middle"
                             align="right"
-                            wrapperStyle={{ fontSize: "11px", paddingLeft: "10px" }}
+                            wrapperStyle={{
+                              fontSize: "11px",
+                              paddingLeft: "10px",
+                            }}
                             formatter={(value, entry) => (
                               <span style={{ color: entry.color }}>
                                 {value}: {entry.payload?.value || 0}%

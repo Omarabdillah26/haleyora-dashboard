@@ -59,6 +59,10 @@ Rincian Kategori → Klik Nama Divisi → URL: /tindak-lanjut?division=BOD-1 →
 /tindak-lanjut?division=VP AGA
 /tindak-lanjut?division=VP KEU
 /tindak-lanjut?division=VP OP
+/tindak-lanjut?division=VP REN
+/tindak-lanjut?division=VP MHC
+/tindak-lanjut?division=MAN HK
+/tindak-lanjut?division=MAN MR
 ```
 
 ### **Cara Penggunaan:**

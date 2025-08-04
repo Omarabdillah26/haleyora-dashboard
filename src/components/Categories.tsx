@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { CategoryTable, CategoryTableData } from "../types";
 
-const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
+const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP", "VP REN", "VP MHC", "MAN HK", "MAN MR"];
 
 // Array warna untuk tabel kategori
 const tableColors = [

@@ -27,11 +27,23 @@ import {
   uploadFiles,
   deleteFile,
   getFileUrl,
+  getFileViewUrl,
   testTindakLanjutTable,
   testServerStatus,
 } from "../services/apiService";
 
-const divisions = ["BOD-1", "KSPI", "SEKPER", "VP AGA", "VP KEU", "VP OP"];
+const divisions = [
+  "BOD-1",
+  "KSPI",
+  "SEKPER",
+  "VP AGA",
+  "VP KEU",
+  "VP OP",
+  "VP REN",
+  "VP MHC",
+  "MAN HK",
+  "MAN MR",
+];
 
 // Helper function to check if user can edit tindak lanjut
 const canUserEditTindakLanjut = (
@@ -478,6 +490,11 @@ const TindakLanjutComponent: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const handleFileView = (filename: string) => {
+    const url = getFileViewUrl(filename);
+    window.open(url, "_blank");
+  };
+
   // Filter and search logic - all users can view all data
   const filteredTindakLanjut = tindakLanjut.filter((t) => {
     const matchesSearch =
@@ -670,11 +687,11 @@ const TindakLanjutComponent: React.FC = () => {
 
       {/* Data Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto max-w-full">
+          <table className="w-full divide-y divide-gray-200 responsive-table">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer w-48">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
                   <div className="flex items-center space-x-1">
                     <span>Kategori Arahan</span>
                     <svg
@@ -690,28 +707,32 @@ const TindakLanjutComponent: React.FC = () => {
                     </svg>
                   </div>
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
-                  Detail Arahan
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center space-x-1">
+                    <span>Detail Arahan</span>
+                  </div>
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   PIC
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Target
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
-                  Deskripsi Tindak Lanjut
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center space-x-1">
+                    <span>Deskripsi Tindak Lanjut</span>
+                  </div>
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Files
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Access
                 </th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -779,12 +800,28 @@ const TindakLanjutComponent: React.FC = () => {
                       key={row.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {categoryName}
+                      <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-900">
+                        <div className="truncate cursor-help hover:bg-gray-50 p-1 rounded transition-colors tooltip">
+                          {categoryName}
+                          <span className="tooltip-text">{categoryName}</span>
+                        </div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs">
-                          {row.detailArahan || "Tidak ada detail"}
+                        <div className="max-w-full relative group">
+                          <div className="line-clamp-2 text-sm leading-tight cursor-help hover:bg-gray-50 p-1 rounded transition-colors relative group tooltip">
+                            {row.detailArahan || "Tidak ada detail"}
+                            <span className="tooltip-text">
+                              {row.detailArahan || "Tidak ada detail"}
+                            </span>
+                          </div>
+                          {row.detailArahan &&
+                            row.detailArahan.length > 150 && (
+                              <div className="absolute bottom-0 right-0 bg-gradient-to-l from-white to-transparent w-8 h-6 pointer-events-none flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-xs text-blue-600 font-medium mr-1">
+                                  Read more
+                                </span>
+                              </div>
+                            )}
                         </div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -803,13 +840,27 @@ const TindakLanjutComponent: React.FC = () => {
                         {getStatusBadge(row.status || "belum_ditindaklanjuti")}
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs">
-                          {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
+                        <div className="max-w-full relative group">
+                          <div className="line-clamp-2 text-sm leading-tight cursor-help hover:bg-gray-50 p-1 rounded transition-colors relative group tooltip">
+                            {row.deskripsiTindakLanjut || "Tidak ada deskripsi"}
+                            <span className="tooltip-text">
+                              {row.deskripsiTindakLanjut ||
+                                "Tidak ada deskripsi"}
+                            </span>
+                          </div>
+                          {row.deskripsiTindakLanjut &&
+                            row.deskripsiTindakLanjut.length > 150 && (
+                              <div className="absolute bottom-0 right-0 bg-gradient-to-l from-white to-transparent w-8 h-6 pointer-events-none flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-xs text-blue-600 font-medium mr-1">
+                                  Read more
+                                </span>
+                              </div>
+                            )}
                         </div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {row.fileAttachment && row.fileAttachment !== "[]" ? (
-                          <div className="flex items-center space-x-1">
+                          <div className="flex items-center space-x-2">
                             <Paperclip className="w-4 h-4 text-gray-500" />
                             <span className="text-xs text-gray-600">
                               {(() => {
@@ -821,6 +872,45 @@ const TindakLanjutComponent: React.FC = () => {
                                 }
                               })()}
                             </span>
+                            <div className="flex items-center space-x-1">
+                              {(() => {
+                                try {
+                                  const files = JSON.parse(row.fileAttachment);
+                                  return files.map(
+                                    (file: any, index: number) => (
+                                      <div
+                                        key={index}
+                                        className="flex items-center space-x-1"
+                                      >
+                                        <button
+                                          onClick={() =>
+                                            handleFileView(file.filename)
+                                          }
+                                          className="text-blue-600 hover:text-blue-800 text-xs p-1 rounded hover:bg-blue-50 transition-colors"
+                                          title="View file"
+                                        >
+                                          <Eye className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleFileDownload(
+                                              file.filename,
+                                              file.originalName
+                                            )
+                                          }
+                                          className="text-green-600 hover:text-green-800 text-xs p-1 rounded hover:bg-green-50 transition-colors"
+                                          title="Download file"
+                                        >
+                                          <Download className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    )
+                                  );
+                                } catch {
+                                  return null;
+                                }
+                              })()}
+                            </div>
                           </div>
                         ) : (
                           <span className="text-xs text-gray-400">
@@ -1250,6 +1340,14 @@ const TindakLanjutComponent: React.FC = () => {
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => handleFileView(file.filename)}
+                              className="p-1 text-green-600 hover:text-green-800"
+                              title="View"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
                             <button
                               type="button"
                               onClick={() =>

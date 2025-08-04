@@ -1,3 +1,199 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom utilities for table text handling */
+@layer utilities {
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .text-ellipsis {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+
+/* Custom scrollbar styles */
+@layer components {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 6px;
+  }
+
+  .scrollbar-track-gray-100::-webkit-scrollbar-track {
+    background-color: #f3f4f6;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  /* Responsive table styles */
+  .responsive-table {
+    table-layout: auto;
+    width: 100%;
+  }
+
+  .responsive-table th,
+  .responsive-table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Responsive column widths */
+  @media (max-width: 768px) {
+    .responsive-table th:nth-child(1), /* Kategori Arahan */
+    .responsive-table td:nth-child(1) {
+      max-width: 120px;
+      min-width: 120px;
+    }
+    
+    .responsive-table th:nth-child(3), /* PIC */
+    .responsive-table td:nth-child(3) {
+      max-width: 80px;
+      min-width: 80px;
+    }
+    
+    .responsive-table th:nth-child(4), /* Target */
+    .responsive-table td:nth-child(4) {
+      max-width: 100px;
+      min-width: 100px;
+    }
+    
+    .responsive-table th:nth-child(5), /* Status */
+    .responsive-table td:nth-child(5) {
+      max-width: 120px;
+      min-width: 120px;
+    }
+    
+    .responsive-table th:nth-child(7), /* Files */
+    .responsive-table td:nth-child(7) {
+      max-width: 80px;
+      min-width: 80px;
+    }
+    
+    .responsive-table th:nth-child(8), /* Access */
+    .responsive-table td:nth-child(8) {
+      max-width: 100px;
+      min-width: 100px;
+    }
+    
+    .responsive-table th:nth-child(9), /* Actions */
+    .responsive-table td:nth-child(9) {
+      max-width: 80px;
+      min-width: 80px;
+    }
+  }
+  
+  /* Desktop responsive styles */
+  @media (min-width: 769px) {
+    .responsive-table th:nth-child(1), /* Kategori Arahan */
+    .responsive-table td:nth-child(1) {
+      max-width: 150px;
+      min-width: 150px;
+    }
+    
+    .responsive-table th:nth-child(3), /* PIC */
+    .responsive-table td:nth-child(3) {
+      max-width: 100px;
+      min-width: 100px;
+    }
+    
+    .responsive-table th:nth-child(4), /* Target */
+    .responsive-table td:nth-child(4) {
+      max-width: 120px;
+      min-width: 120px;
+    }
+    
+    .responsive-table th:nth-child(5), /* Status */
+    .responsive-table td:nth-child(5) {
+      max-width: 140px;
+      min-width: 140px;
+    }
+    
+    .responsive-table th:nth-child(7), /* Files */
+    .responsive-table td:nth-child(7) {
+      max-width: 100px;
+      min-width: 100px;
+    }
+    
+    .responsive-table th:nth-child(8), /* Access */
+    .responsive-table td:nth-child(8) {
+      max-width: 120px;
+      min-width: 120px;
+    }
+    
+    .responsive-table th:nth-child(9), /* Actions */
+    .responsive-table td:nth-child(9) {
+      max-width: 100px;
+      min-width: 100px;
+    }
+  }
+
+  /* Custom tooltip styles */
+  .tooltip {
+    position: relative;
+  }
+
+  .tooltip .tooltip-text {
+    visibility: hidden;
+    width: 300px;
+    background-color: #1f2937;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 1000;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -150px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 300px;
+  }
+
+  .tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1f2937 transparent transparent transparent;
+  }
+
+  .tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+  }
+}

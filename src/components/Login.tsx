@@ -32,9 +32,9 @@ const Login: React.FC = () => {
         {/* Logo and Title */}
         <div className="text-center">
           <div className="mx-auto h-20 w-20 flex items-center justify-center shadow-lg mb-6">
-            <img 
-              src={logoImage} 
-              alt="PLN Logo" 
+            <img
+              src={logoImage}
+              alt="PLN Logo"
               className="h-16 w-16 object-contain"
             />
           </div>
@@ -162,6 +162,18 @@ const Login: React.FC = () => {
             </p>
             <p>
               <strong>VP KEU:</strong> vpkeu / 123456
+            </p>
+            <p>
+              <strong>VP REN:</strong> vpren / 123456
+            </p>
+            <p>
+              <strong>VP MHC:</strong> vpmhc / 123456
+            </p>
+            <p>
+              <strong>MAN HK:</strong> manhk / 123456
+            </p>
+            <p>
+              <strong>MAN MR:</strong> manmr / 123456
             </p>
           </div>
         </div>

@@ -50,7 +50,7 @@ Aplikasi web untuk monitoring dan tracking arahan per divisi dengan fitur katego
 
 1. Klik tombol "Tambah Baris" untuk menambahkan data divisi
 2. Untuk setiap baris, isi:
-   - **Divisi**: Pilih dari dropdown (BOD-1, KSPI, SEKPER, VP AGA, VP KEU, VP OP)
+   - **Divisi**: Pilih dari dropdown (BOD-1, KSPI, SEKPER, VP AGA, VP KEU, VP OP, VP REN, VP MHC, MAN HK, MAN MR)
    - **Jumlah**: Total item dalam kategori
    - **Proses**: Item yang sedang dalam proses
    - **Selesai**: Item yang sudah selesai
@@ -194,3 +194,7 @@ npm run build
 - **VP AGA**: vpaga / 123456
 - **VP KEU**: vpkeu / 123456
 - **VP OP**: vpop / 123456
+- **VP REN**: vpren / 123456
+- **VP MHC**: vpmhc / 123456
+- **MAN HK**: manhk / 123456
+- **MAN MR**: manmr / 123456

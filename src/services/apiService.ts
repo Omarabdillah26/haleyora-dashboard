@@ -4,7 +4,7 @@ const API_BASE_URL = "http://localhost:3001/api";
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     console.log(`Making API call to: ${API_BASE_URL}${endpoint}`);
-    
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
         "Content-Type": "application/json",
@@ -21,7 +21,9 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     if (!contentType || !contentType.includes("application/json")) {
       const text = await response.text();
       console.error(`Non-JSON response from ${endpoint}:`, text);
-      throw new Error(`Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`);
+      throw new Error(
+        `Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`
+      );
     }
 
     const data = await response.json();
@@ -182,7 +184,11 @@ export const deleteFile = async (filename: string) => {
 };
 
 export const getFileUrl = (filename: string) => {
-  return `${API_BASE_URL}/uploads/${filename}`;
+  return `${API_BASE_URL}/download/${filename}`;
+};
+
+export const getFileViewUrl = (filename: string) => {
+  return `${API_BASE_URL}/view/${filename}`;
 };
 
 // Tindak Lanjut API
@@ -207,12 +213,12 @@ export const createTindakLanjut = async (tindakLanjutData: any) => {
 export const updateTindakLanjut = async (id: string, tindakLanjutData: any) => {
   console.log("apiService: Updating tindak lanjut with ID:", id);
   console.log("apiService: Data to update:", tindakLanjutData);
-  
+
   const response = await apiCall(`/tindak-lanjut/${id}`, {
     method: "PUT",
     body: JSON.stringify(tindakLanjutData),
   });
-  
+
   console.log("apiService: Update response:", response);
   return response;
 };
