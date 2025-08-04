@@ -15,13 +15,50 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    console.log('Received event:', JSON.stringify(event, null, 2));
+    
     // Parse the request
-    const { path, method, body, headers } = JSON.parse(event.body || '{}');
+    let requestData;
+    try {
+      requestData = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Invalid JSON in request body',
+          message: 'Request body must be valid JSON'
+        })
+      };
+    }
+    
+    const { path, method, body, headers } = requestData;
+    
+    // Validate required fields
+    if (!path) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Missing path parameter',
+          message: 'Path is required in request body'
+        })
+      };
+    }
     
     // Construct the target URL with correct port
     const targetUrl = `http://160.250.227.12:2134/api${path}`;
     
     console.log(`Proxying request to: ${targetUrl}`);
+    console.log(`Method: ${method || 'GET'}`);
+    console.log(`Body: ${body}`);
     
     // Make the request to your API server
     const response = await fetch(targetUrl, {
@@ -30,8 +67,10 @@ exports.handler = async (event, context) => {
         'Content-Type': 'application/json',
         ...headers
       },
-      body: body ? JSON.stringify(body) : undefined
+      body: body || undefined
     });
+    
+    console.log(`Target response status: ${response.status}`);
     
     const responseData = await response.text();
     let data;
@@ -39,8 +78,11 @@ exports.handler = async (event, context) => {
     try {
       data = JSON.parse(responseData);
     } catch (e) {
+      console.log('Response is not JSON, treating as text');
       data = { text: responseData };
     }
+    
+    console.log(`Returning data:`, data);
     
     return {
       statusCode: response.status,
@@ -62,7 +104,8 @@ exports.handler = async (event, context) => {
       },
       body: JSON.stringify({ 
         error: error.message,
-        message: 'Proxy request failed'
+        message: 'Proxy request failed',
+        details: error.toString()
       })
     };
   }

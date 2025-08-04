@@ -12,25 +12,45 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     
     if (isUsingProxy) {
       // Use the Netlify function proxy
+      const proxyBody: {
+        path: string;
+        method: string;
+        headers: HeadersInit;
+        body?: string;
+      } = {
+        path: endpoint,
+        method: options.method || "GET",
+        headers: options.headers || {}
+      };
+
+      // Handle body properly - if it's already a string, use it as is
+      if (options.body) {
+        if (typeof options.body === 'string') {
+          proxyBody.body = options.body;
+        } else {
+          proxyBody.body = JSON.stringify(options.body);
+        }
+      }
+
+      console.log('Sending to Netlify function:', proxyBody);
+
       const response = await fetch(API_BASE_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          path: endpoint,
-          method: options.method || "GET",
-          body: options.body,
-          headers: options.headers
-        }),
+        body: JSON.stringify(proxyBody),
       });
 
-      const data = await response.json();
-      
+      console.log(`Proxy response status: ${response.status}`);
+
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Proxy error response:', errorText);
+        throw new Error(`Proxy request failed: ${response.status} - ${errorText}`);
       }
 
+      const data = await response.json();
       return data;
     } else {
       // Use direct API call

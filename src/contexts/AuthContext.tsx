@@ -50,17 +50,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (isUsingProxy) {
         // Use the Netlify function proxy
+        const proxyBody = {
+          path: "/users/login",
+          method: "POST",
+          headers: {},
+          body: JSON.stringify({ username, password })
+        };
+
+        console.log('Sending login to Netlify function:', proxyBody);
+
         const response = await fetch(API_BASE_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            path: "/users/login",
-            method: "POST",
-            body: JSON.stringify({ username, password })
-          }),
+          body: JSON.stringify(proxyBody),
         });
+
+        console.log(`Login proxy response status: ${response.status}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Login proxy error response:', errorText);
+          throw new Error(`Login proxy request failed: ${response.status} - ${errorText}`);
+        }
 
         const data = await response.json();
 
