@@ -6,7 +6,7 @@ export const API_CONFIG = {
   // Development URL (for local development)
   DEV_URL: "http://localhost:3001/api",
   
-  // Production URL
+  // Production URL - using HTTP for now to avoid mixed content
   PROD_URL: "http://160.250.227.12:2134/api"
 };
 
@@ -16,7 +16,7 @@ export const getApiUrl = () => {
     return API_CONFIG.DEV_URL;
   }
   
-  // For production, use direct API call
-  // We'll handle mixed content issues in the API service
+  // For production, always use HTTP to avoid mixed content issues
+  // until backend is configured with HTTPS
   return API_CONFIG.PROD_URL;
 }; 

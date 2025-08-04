@@ -30,6 +30,9 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// CORS Proxy as fallback
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,40 +54,81 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const isSecureContext = window.isSecureContext || window.location.protocol === 'https:';
       
       if (isSecureContext) {
-        console.warn('Making HTTP request from HTTPS page. This may be blocked by the browser.');
+        console.warn('⚠️ Making HTTP request from HTTPS page. This may be blocked by the browser.');
+        console.warn('💡 To fix this permanently, enable HTTPS on your backend server.');
       }
 
-      // Use direct API call
-      const response = await fetch(`${API_BASE_URL}/users/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      });
+      // Try direct API call first
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username, password }),
+        });
 
-      console.log(`Login response status: ${response.status}`);
+        console.log(`Login response status: ${response.status}`);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Login error response:', errorText);
-        throw new Error(`Login request failed: ${response.status} - ${errorText}`);
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Login error response:', errorText);
+          throw new Error(`Login request failed: ${response.status} - ${errorText}`);
+        }
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (data.success) {
-        const userData: User = {
-          id: data.data.id,
-          username: data.data.username,
-          password: "", // Empty password for security
-          role: data.data.role,
-          name: data.data.name,
-        };
-        setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
-      } else {
-        throw new Error(data.message || "Login failed");
+        if (data.success) {
+          const userData: User = {
+            id: data.data.id,
+            username: data.data.username,
+            password: "", // Empty password for security
+            role: data.data.role,
+            name: data.data.name,
+          };
+          setUser(userData);
+          localStorage.setItem("user", JSON.stringify(userData));
+        } else {
+          throw new Error(data.message || "Login failed");
+        }
+      } catch (directError) {
+        // If direct call fails and we're in HTTPS, try CORS proxy
+        if (isSecureContext && directError instanceof TypeError && directError.message.includes('Failed to fetch')) {
+          console.warn('🔄 Direct login failed, trying CORS proxy...');
+          
+          const proxyUrl = `${CORS_PROXY}${encodeURIComponent(`${API_BASE_URL}/users/login`)}`;
+          
+          const proxyResponse = await fetch(proxyUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username, password }),
+          });
+
+          if (!proxyResponse.ok) {
+            throw new Error(`Proxy login failed: ${proxyResponse.status}`);
+          }
+
+          const data = await proxyResponse.json();
+          console.log('✅ Login successful via CORS proxy');
+
+          if (data.success) {
+            const userData: User = {
+              id: data.data.id,
+              username: data.data.username,
+              password: "", // Empty password for security
+              role: data.data.role,
+              name: data.data.name,
+            };
+            setUser(userData);
+            localStorage.setItem("user", JSON.stringify(userData));
+          } else {
+            throw new Error(data.message || "Login failed");
+          }
+        } else {
+          throw directError;
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
