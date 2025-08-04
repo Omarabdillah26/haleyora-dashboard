@@ -663,11 +663,7 @@ const TindakLanjutComponent: React.FC = () => {
                 {filteredTindakLanjut.length} results
               </span>
             </div>
-            <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-              </svg>
-            </button>
+            <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"></button>
           </div>
         </div>
       </div>
@@ -1065,9 +1061,7 @@ const TindakLanjutComponent: React.FC = () => {
                     !canUserEditTindakLanjut(user?.role || "", editingRow.pic)
                   }
                 />
-                <p className="text-xs text-green-600 mt-1">
-                  Semua user dapat mengubah detail arahan
-                </p>
+                <p className="text-xs text-green-600 mt-1"></p>
               </div>
 
               {/* PIC and Target */}
@@ -1148,9 +1142,6 @@ const TindakLanjutComponent: React.FC = () => {
                     Selesai Berkelanjutan
                   </option>
                 </select>
-                <p className="text-xs text-green-600 mt-1">
-                  Semua user dapat mengubah status tindak lanjut
-                </p>
               </div>
 
               {/* Deskripsi Tindak Lanjut */}
@@ -1173,9 +1164,6 @@ const TindakLanjutComponent: React.FC = () => {
                     !canUserEditTindakLanjut(user?.role || "", editingRow.pic)
                   }
                 />
-                <p className="text-xs text-green-600 mt-1">
-                  Semua user dapat mengubah deskripsi tindak lanjut
-                </p>
               </div>
 
               {/* Catatan Sekretaris & Komite Dekom */}
@@ -1195,9 +1183,6 @@ const TindakLanjutComponent: React.FC = () => {
                     !canUserEditTindakLanjut(user?.role || "", editingRow.pic)
                   }
                 />
-                <p className="text-xs text-green-600 mt-1">
-                  Semua user dapat mengubah catatan sekretaris
-                </p>
               </div>
 
               {/* File Upload */}
@@ -1205,9 +1190,7 @@ const TindakLanjutComponent: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Upload File
                 </label>
-                <p className="text-xs text-green-600 mb-2">
-                  Semua user dapat mengupload dan mengelola file
-                </p>
+
                 <div className="space-y-3">
                   {/* File Input */}
                   <div className="flex items-center space-x-3">
