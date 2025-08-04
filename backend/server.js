@@ -657,6 +657,56 @@ app.post("/api/upload-files", upload.array("files", 5), async (req, res) => {
   }
 });
 
+// Base64 file upload endpoint for HTTPS environments
+app.post("/api/upload-files-base64", async (req, res) => {
+  try {
+    const { files } = req.body;
+    
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded",
+      });
+    }
+
+    const uploadedFiles = [];
+
+    for (const fileData of files) {
+      const { name, data, type } = fileData;
+      
+      // Generate unique filename
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const filename = `file-${uniqueSuffix}-${name}`;
+      const filePath = path.join(uploadsDir, filename);
+      
+      // Convert base64 to buffer and write file
+      const buffer = Buffer.from(data, 'base64');
+      fs.writeFileSync(filePath, buffer);
+      
+      uploadedFiles.push({
+        filename: filename,
+        originalname: name,
+        path: `/uploads/${filename}`,
+        size: buffer.length,
+        mimetype: type,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Files uploaded successfully",
+      data: uploadedFiles,
+    });
+  } catch (error) {
+    console.error("Failed to upload base64 files:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload files",
+      error: error.message,
+    });
+  }
+});
+
 // Delete file endpoint
 app.delete("/api/delete-file/:filename", async (req, res) => {
   try {

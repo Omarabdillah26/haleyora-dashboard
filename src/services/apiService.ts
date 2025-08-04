@@ -7,39 +7,17 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     console.log(`Making API call to: ${API_BASE_URL}${endpoint}`);
 
-    // Check if we're using the Netlify function proxy
-    const isUsingProxy = API_BASE_URL === "/.netlify/functions/api-proxy";
+    // Check if we're using the CORS proxy
+    const isUsingProxy = API_BASE_URL.includes("cors-anywhere.herokuapp.com");
     
     if (isUsingProxy) {
-      // Use the Netlify function proxy
-      const proxyBody: {
-        path: string;
-        method: string;
-        headers: HeadersInit;
-        body?: string;
-      } = {
-        path: endpoint,
-        method: options.method || "GET",
-        headers: options.headers || {}
-      };
-
-      // Handle body properly - if it's already a string, use it as is
-      if (options.body) {
-        if (typeof options.body === 'string') {
-          proxyBody.body = options.body;
-        } else {
-          proxyBody.body = JSON.stringify(options.body);
-        }
-      }
-
-      console.log('Sending to Netlify function:', proxyBody);
-
-      const response = await fetch(API_BASE_URL, {
-        method: "POST",
+      // Use the CORS proxy - direct API call
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
           "Content-Type": "application/json",
+          ...options.headers,
         },
-        body: JSON.stringify(proxyBody),
+        ...options,
       });
 
       console.log(`Proxy response status: ${response.status}`);
@@ -97,6 +75,12 @@ export const testConnection = async () => {
 // Test server status
 export const testServerStatus = async () => {
   const response = await apiCall("/server-status");
+  return response;
+};
+
+// Test simple endpoint (no database required)
+export const testSimple = async () => {
+  const response = await apiCall("/test-simple");
   return response;
 };
 
@@ -213,17 +197,58 @@ export const uploadFiles = async (files: File[]) => {
     formData.append("files", file);
   });
 
-  const response = await fetch(`${API_BASE_URL}/upload-files`, {
-    method: "POST",
-    body: formData,
-  });
+  // For file uploads, we need to handle the mixed content issue
+  // Since FormData can't go through CORS proxy easily, we'll use a different approach
+  const isSecureContext = window.isSecureContext || window.location.protocol === 'https:';
+  
+  if (isSecureContext) {
+    // For HTTPS, we'll use a different approach - convert files to base64 and send as JSON
+    const filePromises = Array.from(files).map(async (file) => {
+      return new Promise<{name: string, data: string, type: string}>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve({
+            name: file.name,
+            data: base64,
+            type: file.type
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
 
-  if (!response.ok) {
-    throw new Error("Failed to upload files");
+    const fileData = await Promise.all(filePromises);
+    
+    // Send as JSON through the CORS proxy
+    const response = await fetch(`${API_BASE_URL}/upload-files-base64`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ files: fileData }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to upload files");
+    }
+
+    const result = await response.json();
+    return result.data;
+  } else {
+    // For HTTP, use direct API call
+    const response = await fetch(`${API_BASE_URL}/upload-files`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to upload files");
+    }
+
+    const result = await response.json();
+    return result.data;
   }
-
-  const result = await response.json();
-  return result.data;
 };
 
 export const deleteFile = async (filename: string) => {

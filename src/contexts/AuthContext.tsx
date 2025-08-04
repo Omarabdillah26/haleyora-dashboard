@@ -46,25 +46,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(true);
     try {
       const API_BASE_URL = getApiUrl();
-      const isUsingProxy = API_BASE_URL === "/.netlify/functions/api-proxy";
+      const isUsingProxy = API_BASE_URL.includes("cors-anywhere.herokuapp.com");
       
       if (isUsingProxy) {
-        // Use the Netlify function proxy
-        const proxyBody = {
-          path: "/users/login",
-          method: "POST",
-          headers: {},
-          body: JSON.stringify({ username, password })
-        };
-
-        console.log('Sending login to Netlify function:', proxyBody);
-
-        const response = await fetch(API_BASE_URL, {
+        // Use the CORS proxy - direct API call
+        const response = await fetch(`${API_BASE_URL}/users/login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(proxyBody),
+          body: JSON.stringify({ username, password }),
         });
 
         console.log(`Login proxy response status: ${response.status}`);
