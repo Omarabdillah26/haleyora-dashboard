@@ -1,111 +1,84 @@
 const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
-  // Handle CORS preflight requests
+  // Enable CORS
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+  };
+
+  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-      },
+      headers,
       body: ''
     };
   }
 
   try {
-    console.log('Received event:', JSON.stringify(event, null, 2));
+    const API_BASE_URL = 'http://160.250.227.12:2134/api';
     
-    // Parse the request
-    let requestData;
-    try {
-      requestData = JSON.parse(event.body || '{}');
-    } catch (parseError) {
-      console.error('Failed to parse request body:', parseError);
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ 
-          error: 'Invalid JSON in request body',
-          message: 'Request body must be valid JSON'
-        })
-      };
-    }
+    // Get the path from the URL
+    const path = event.path.replace('/.netlify/functions/api-proxy', '');
+    const fullUrl = `${API_BASE_URL}${path}`;
     
-    const { path, method, body, headers } = requestData;
+    console.log(`Proxying request to: ${fullUrl}`);
+    console.log(`Method: ${event.httpMethod}`);
+    console.log(`Headers:`, event.headers);
     
-    // Validate required fields
-    if (!path) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ 
-          error: 'Missing path parameter',
-          message: 'Path is required in request body'
-        })
-      };
-    }
-    
-    // Construct the target URL with correct port
-    const targetUrl = `http://160.250.227.12:2134/api${path}`;
-    
-    console.log(`Proxying request to: ${targetUrl}`);
-    console.log(`Method: ${method || 'GET'}`);
-    console.log(`Body: ${body}`);
-    
-    // Make the request to your API server
-    const response = await fetch(targetUrl, {
-      method: method || 'GET',
+    // Prepare request options
+    const requestOptions = {
+      method: event.httpMethod,
       headers: {
         'Content-Type': 'application/json',
-        ...headers
-      },
-      body: body || undefined
-    });
-    
-    console.log(`Target response status: ${response.status}`);
-    
-    const responseData = await response.text();
-    let data;
-    
-    try {
-      data = JSON.parse(responseData);
-    } catch (e) {
-      console.log('Response is not JSON, treating as text');
-      data = { text: responseData };
+        ...event.headers
+      }
+    };
+
+    // Add body for POST, PUT, PATCH requests
+    if (['POST', 'PUT', 'PATCH'].includes(event.httpMethod) && event.body) {
+      requestOptions.body = event.body;
     }
+
+    // Make the request to the backend
+    const response = await fetch(fullUrl, requestOptions);
     
-    console.log(`Returning data:`, data);
+    console.log(`Backend response status: ${response.status}`);
     
+    // Get response body
+    const responseBody = await response.text();
+    
+    // Try to parse as JSON, fallback to text
+    let responseData;
+    try {
+      responseData = JSON.parse(responseBody);
+    } catch (e) {
+      responseData = responseBody;
+    }
+
+    // Return the response
     return {
       statusCode: response.status,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+        ...headers,
+        'Content-Type': response.headers.get('content-type') || 'application/json'
       },
-      body: JSON.stringify(data)
+      body: typeof responseData === 'string' ? responseData : JSON.stringify(responseData)
     };
+
   } catch (error) {
     console.error('Proxy error:', error);
+    
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({ 
-        error: error.message,
+      headers,
+      body: JSON.stringify({
+        success: false,
         message: 'Proxy request failed',
-        details: error.toString()
+        error: error.message
       })
     };
   }

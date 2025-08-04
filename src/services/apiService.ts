@@ -2,88 +2,56 @@ import { getApiUrl } from "../config/api";
 
 const API_BASE_URL = getApiUrl();
 
-// CORS Proxy as fallback (temporary solution)
-const CORS_PROXY = "https://api.allorigins.win/raw?url=";
-
-// Generic API call function with fallback
+// Generic API call function
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     console.log(`Making API call to: ${API_BASE_URL}${endpoint}`);
 
-    // Check if we're in a secure context (HTTPS)
-    const isSecureContext = window.isSecureContext || window.location.protocol === 'https:';
+    // Check if we're using Netlify function proxy
+    const isUsingProxy = API_BASE_URL.includes('/.netlify/functions/');
     
-    if (isSecureContext) {
-      console.warn('⚠️ Making HTTP request from HTTPS page. This may be blocked by the browser.');
-      console.warn('💡 To fix this permanently, enable HTTPS on your backend server.');
+    if (isUsingProxy) {
+      console.log('🔄 Using Netlify function proxy for HTTPS environment');
     }
 
-    // Try direct API call first
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-        ...options,
-      });
+    // Make the API call
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
 
-      console.log(`Response status: ${response.status}`);
+    console.log(`Response status: ${response.status}`);
 
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error(`Non-JSON response from ${endpoint}:`, text);
-        throw new Error(
-          `Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`
-        );
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return data;
-    } catch (directError) {
-      // If direct call fails and we're in HTTPS, try CORS proxy
-      if (isSecureContext && directError instanceof TypeError && directError.message.includes('Failed to fetch')) {
-        console.warn('🔄 Direct API call failed, trying CORS proxy...');
-        
-        const proxyUrl = `${CORS_PROXY}${encodeURIComponent(`${API_BASE_URL}${endpoint}`)}`;
-        
-        const proxyResponse = await fetch(proxyUrl, {
-          method: options.method || 'GET',
-          headers: {
-            "Content-Type": "application/json",
-            ...options.headers,
-          },
-          body: options.body,
-        });
-
-        if (!proxyResponse.ok) {
-          throw new Error(`Proxy request failed: ${proxyResponse.status}`);
-        }
-
-        const proxyData = await proxyResponse.json();
-        console.log('✅ API call successful via CORS proxy');
-        return proxyData;
-      }
-      
-      throw directError;
+    // Check if response is JSON
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error(`Non-JSON response from ${endpoint}:`, text);
+      throw new Error(
+        `Expected JSON response but got: ${contentType}. Server might be down or endpoint not found.`
+      );
     }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
   } catch (error) {
     console.error(`API call failed for ${endpoint}:`, error);
     
-    // If it's a mixed content error, provide helpful message
+    // Provide helpful error messages
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      console.error('🚫 Mixed Content Error: HTTPS page trying to access HTTP API');
-      console.error('💡 Solutions:');
-      console.error('   1. Enable HTTPS on your backend server (recommended)');
-      console.error('   2. Use a custom domain with HTTP on Netlify');
-      console.error('   3. Use a CORS proxy (temporary solution)');
+      console.error('🚫 Network Error: Unable to connect to API server');
+      console.error('💡 Possible solutions:');
+      console.error('   1. Check if backend server is running');
+      console.error('   2. Verify API URL configuration');
+      console.error('   3. Check network connectivity');
     }
     
     throw error;

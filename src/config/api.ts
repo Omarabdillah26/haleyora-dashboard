@@ -7,7 +7,10 @@ export const API_CONFIG = {
   DEV_URL: "http://localhost:3001/api",
   
   // Production URL - using HTTP for now to avoid mixed content
-  PROD_URL: "http://160.250.227.12:2134/api"
+  PROD_URL: "http://160.250.227.12:2134/api",
+  
+  // Netlify function proxy URL (for HTTPS environments)
+  NETLIFY_PROXY_URL: "/.netlify/functions/api-proxy"
 };
 
 // Get the appropriate API URL based on environment
@@ -16,7 +19,14 @@ export const getApiUrl = () => {
     return API_CONFIG.DEV_URL;
   }
   
-  // For production, always use HTTP to avoid mixed content issues
-  // until backend is configured with HTTPS
+  // For production, check if we're in HTTPS environment
+  const isSecureContext = window.isSecureContext || window.location.protocol === 'https:';
+  
+  if (isSecureContext) {
+    // Use Netlify function proxy for HTTPS environments
+    return API_CONFIG.NETLIFY_PROXY_URL;
+  }
+  
+  // Use direct API call for HTTP environments
   return API_CONFIG.PROD_URL;
 }; 
